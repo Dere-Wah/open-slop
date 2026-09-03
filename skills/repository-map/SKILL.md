@@ -63,10 +63,11 @@ The projector (on the `code` branch) does this, in a loop, forever:
 3. **Broadcast.** The clips play into a LiveKit room. The viewer plays that room
    and shows the rundown, the countdown, and who wrote what. The countdown
    names the story version the next screening was snapshotted at.
-4. **Loop.** When the last scene plays, the next snapshot is already queued and
-   plays straight through. A pull request merged during a screening appears in
-   the first screening snapshotted after the merge — never in the middle of the
-   film.
+4. **Loop.** When the last scene ends, the stream holds for a short
+   intermission — the viewer sees the screening end and a count into the next
+   — and then the next snapshot, already queued, plays from its first frame. A
+   pull request merged during a screening appears in the first screening
+   snapshotted after the merge — never in the middle of the film.
 
 When the projector starts, or comes back after losing the video model, nothing
 plays until about half a minute of the opening is built; the viewer shows a
