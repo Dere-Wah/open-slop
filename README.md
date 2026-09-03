@@ -10,7 +10,7 @@ result 24/7. When the movie ends, it starts over with whatever is on this branch
 now. Merge a scene, and it is on air in the next run, with your name on screen.
 
 Nobody approves the story. The audience does: open a pull request, get enough
-`/approve` comments, and it merges on its own.
+approving reviews, and it merges on its own.
 
 ## Write a scene
 
@@ -65,9 +65,11 @@ rename. That is the whole system.
    `STYLE.md`, `LICENSE`. No folders, nothing else.
 2. A bot checks the format and comments where your episode lands and how long
    the movie now runs.
-3. Anyone can comment **`/approve`**. The bot's comment shows how many are needed
-   and how long it waits after your last push. Reach it, and it merges by itself.
-4. Pushing new commits resets the votes. Finish editing, then ask for approvals.
+3. Anyone can approve it like any pull request: **Files changed → Review
+   changes → Approve**. The bot's comment shows how many are needed and how
+   long it waits after your last push. Reach it, and it merges by itself.
+4. An approval is for the commit it was given on, so pushing new commits clears
+   the votes. Finish editing, then ask for approvals.
 
 A maintainer can `/block` something harmful. The video model also moderates
 every prompt. Keep it something a stranger can enjoy.

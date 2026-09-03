@@ -1,24 +1,33 @@
 # Count the audience vote on a story pull request and publish it as a commit
-# status (`story/quorum`). GitHub's native required-approvals only counts
-# reviewers with write access, and Open Slop gives write access to no one — so
-# the vote is `/approve` comments from anyone, tallied here.
+# status (`story/quorum`). The vote is GitHub's own review button: anyone can
+# submit an "Approve" review on a public repository, GitHub just does not count
+# it toward its native required-reviews rule (that only counts write access,
+# and Open Slop gives write access to no one). So this workflow counts them.
 #
-# It runs from the default branch (`story`): on every comment, on every push to
-# a pull request (so the tally resets and auto-merge is re-armed), and on a
-# sweep every ten minutes so a pull request that has gone quiet still crosses
-# its waiting line and merges. It does not merge anything by hand: it sets the
-# status and keeps GitHub's auto-merge armed, and auto-merge fires once
-# story/validate and story/quorum are both green.
+# It runs from the default branch (`story`): on every comment (so `/block`
+# works and any comment refreshes the tally), on every push to a pull request
+# (so the tally resets and auto-merge is re-armed), and on a sweep every five
+# minutes. It cannot run on the review event itself: `pull_request_review`
+# from a fork gets a read-only token, and every contributor here is a fork. So
+# an approval shows up in the tally within a few minutes, or at once when
+# anyone comments. It does not merge anything by hand: it sets the status and
+# keeps GitHub's auto-merge armed, and auto-merge fires once story/validate
+# and story/quorum are both green.
 #
-# THE VOTE ANCHOR — read before editing:
-#   A vote counts only if it was cast after the pull request's current head was
-#   pushed. The push time is NOT read from the commit: committer dates are set
-#   by whoever commits, and a backdated amend would carry old approvals onto
-#   new content. It is read from the first commit status this repository's
-#   bot posted on the head sha (story/validate or story/quorum), which GitHub
-#   timestamps server-side the moment the push triggered a run. Nothing a
-#   contributor writes can move it. The waiting window counts from the same
-#   anchor, so a placeholder opened early and filled in late still waits.
+# WHAT COUNTS — read before editing:
+#   An approval counts only for the commit it was given on: the review's
+#   `commit_id` must equal the pull request's current head. GitHub records
+#   that server-side, so a push after the approvals were gathered drops them
+#   all, and nothing a contributor writes can carry an old approval onto new
+#   content. A reviewer's latest review on the head decides their vote —
+#   "Approve" is yes, "Request changes" is no — and a dismissed review is no.
+#
+# THE WAIT ANCHOR:
+#   The wait after the last push is NOT read from the commit: committer dates
+#   are set by whoever commits. It is read from the first commit status this
+#   repository's bot posted on the head sha (story/validate or story/quorum),
+#   which GitHub timestamps server-side the moment the push triggered a run.
+#   So a placeholder opened early and filled in late still waits.
 #
 # The numbers (QUORUM, COOLING_OFF_MINUTES, MIN_ACCOUNT_AGE_DAYS) live only
 # here. The docs describe the mechanism and point at the bot's comment for the
@@ -32,7 +41,7 @@ on:
     types: [opened, reopened, synchronize]
     branches: [story]
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: write
@@ -57,8 +66,6 @@ jobs:
             const QUORUM = 2;
             const COOLING_OFF_MINUTES = 5;
             const MIN_ACCOUNT_AGE_DAYS = 30;
-            const APPROVE = /^\/approve\b/i;
-            const UNAPPROVE = /^\/unapprove\b/i;
             const BLOCK = /^\/block\b/i;
             const UNBLOCK = /^\/unblock\b/i;
             const CAN_BLOCK = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
@@ -142,22 +149,31 @@ jobs:
                 owner, repo, issue_number: number, per_page: 100,
               });
 
-              // A voter's LATEST /approve or /unapprove after the anchor
-              // decides their vote — so a new push resets the tally. A
-              // maintainer's latest /block or /unblock decides the block, and
-              // it survives pushes.
-              const votes = new Map();
+              // A maintainer's latest /block or /unblock decides the block; it
+              // survives pushes.
               let blocked = false;
               for (const c of comments) {
                 if (!c.body || !c.user || c.user.type === "Bot") continue;
-                if (CAN_BLOCK.has(c.author_association)) {
-                  if (BLOCK.test(c.body)) blocked = true;
-                  else if (UNBLOCK.test(c.body)) blocked = false;
-                }
-                if (new Date(c.created_at).getTime() < anchor) continue;
-                if (c.user.login === pr.user.login) continue; // not the author
-                if (APPROVE.test(c.body)) votes.set(c.user.login, true);
-                else if (UNAPPROVE.test(c.body)) votes.set(c.user.login, false);
+                if (!CAN_BLOCK.has(c.author_association)) continue;
+                if (BLOCK.test(c.body)) blocked = true;
+                else if (UNBLOCK.test(c.body)) blocked = false;
+              }
+
+              // The vote: each reviewer's LATEST review given on the current
+              // head decides — Approve is yes, Request changes is no, and a
+              // dismissed review is no. Reviews on an older commit are not
+              // votes for this one. `listReviews` returns them in submission
+              // order.
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                owner, repo, pull_number: number, per_page: 100,
+              });
+              const votes = new Map();
+              for (const r of reviews) {
+                if (!r.user || r.user.type === "Bot") continue;
+                if (r.user.login === pr.user.login) continue; // not the author
+                if (r.commit_id !== head) continue;
+                if (r.state === "APPROVED") votes.set(r.user.login, true);
+                else if (r.state === "CHANGES_REQUESTED" || r.state === "DISMISSED") votes.set(r.user.login, false);
               }
               const approvers = [];
               const tooNew = [];
@@ -201,14 +217,14 @@ jobs:
                     ? "Enough approvals. It merges as soon as the format check is green."
                     : count >= QUORUM
                       ? `Enough approvals — merges in about ${minutesLeft} minute(s).`
-                      : `Comment \`/approve\` to vote it in. Need ${QUORUM - count} more.`,
+                      : `Need ${QUORUM - count} more. To vote: **Files changed → Review changes → Approve**.`,
                 "",
                 approvers.length ? `Approved by: ${approvers.map((u) => "@" + u).join(", ")}` : "_No approvals yet._",
                 tooNew.length
                   ? `_Not counted (account younger than ${MIN_ACCOUNT_AGE_DAYS} days): ${tooNew.map((u) => "@" + u).join(", ")}_`
                   : null,
                 "",
-                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can \`/approve\`. A new push resets the vote and the ${COOLING_OFF_MINUTES}-minute wait. \`/unapprove\` to withdraw._`,
+                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can approve; comments do not count as votes. An approval is for the commit it was given on, so a new push clears the votes and restarts the ${COOLING_OFF_MINUTES}-minute wait. To withdraw, submit a "Request changes" review. This tally refreshes every few minutes, or at once when anyone comments._`,
               ].filter((line) => line !== null);
               const body = lines.join("\n");
 

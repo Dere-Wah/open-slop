@@ -33,7 +33,7 @@ jobs:
               "You are writing a scene of a film that anyone can write, and the audience approves.",
               "",
               "1. A format check runs automatically and comments what it found.",
-              "2. Anyone whose GitHub account is at least 30 days old can vote it in by commenting `/approve`. **Three approvals** and a six-hour cooling-off window counted from your last push, and it merges on its own — no maintainer needed. Pushing a new commit resets both.",
+              "2. Anyone can vote it in with a normal GitHub review: **Files changed → Review changes → Approve**. The bot's tally comment says how many approvals it needs and how long it waits after your last push; reach that and it merges on its own, no maintainer needed. Pushing a new commit clears the votes.",
               "3. The projector snapshots this branch about a minute of film before each screening starts. Once merged, your scene is on air at [openslop.live](https://openslop.live) from the first screening snapshotted after the merge, credited to you.",
               "",
               `A pull request may only touch episode files and \`README.md\` / \`STYLE.md\` / \`LICENSE\`. See [\`skills/how-approval-works\`](${skills}/how-approval-works/SKILL.md) and [\`skills/writing-a-scene\`](${skills}/writing-a-scene/SKILL.md).`,

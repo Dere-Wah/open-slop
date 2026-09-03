@@ -128,7 +128,7 @@ jobs:
               "```",
               "",
               ok
-                ? "When three people `/approve` this and the cooling-off window has passed, it merges on its own."
+                ? "Once enough people approve it (see the tally comment) and the wait after your last push has passed, it merges on its own."
                 : "Fix the problems above and push again; this re-runs automatically.",
             ].join("\n");
 
