@@ -12,8 +12,8 @@ import {
 } from "./Icons";
 import {
   commitsUrl,
+  contributingUrl,
   pullsUrl,
-  readmeUrl,
   repoUrl,
   treeUrl,
   type RepoRef,
@@ -101,12 +101,13 @@ export function RepoHeader({
               <span className="sm:hidden">Screenplay</span>
             </a>
             <a
-              href={readmeUrl(repo)}
+              href={contributingUrl(repo)}
               target="_blank"
               rel="noreferrer"
-              className="gh-btn gh-btn-primary"
+              className="gh-btn gh-btn-primary gh-btn-lg"
+              title="Add or edit a scene in three steps"
             >
-              <GitPullRequestIcon />
+              <GitPullRequestIcon size={18} />
               <span className="hidden sm:inline">Write the next scene</span>
               <span className="sm:hidden">Write a scene</span>
             </a>

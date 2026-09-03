@@ -121,6 +121,10 @@ button:disabled {
     background: var(--color-btn-hover);
     border-color: var(--color-line);
   }
+  /* The one call to action on the page: taller and louder than its neighbours. */
+  .gh-btn-lg {
+    @apply h-10 px-4 text-base font-semibold;
+  }
   .gh-btn-primary {
     background: var(--color-success-emphasis);
     border-color: rgba(240, 246, 252, 0.1);

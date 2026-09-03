@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { ChevronRightIcon, CommentIcon, GitPullRequestIcon } from "./Icons";
-import { pullRefOf, type RepoRef } from "@/lib/github";
+import { contributingUrl, pullRefOf, type RepoRef } from "@/lib/github";
 
 export interface ChatEntry {
   id: number;
@@ -132,7 +132,13 @@ export function Chat({
           {entries.length > 0 && <span className="gh-counter">{entries.length}</span>}
         </button>
         <span className="hidden text-xs text-fg-muted sm:inline">
-          {hidden ? "hidden" : "to add a scene, open a PR"}
+          {hidden ? (
+            "hidden"
+          ) : (
+            <a href={contributingUrl(repo)} target="_blank" rel="noreferrer">
+              how to add a scene
+            </a>
+          )}
         </span>
       </header>
 

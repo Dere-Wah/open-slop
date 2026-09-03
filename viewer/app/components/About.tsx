@@ -13,7 +13,15 @@ import {
   TagIcon,
 } from "./Icons";
 import { formatDuration } from "@/lib/format";
-import { commitsUrl, pullsUrl, readmeUrl, repoUrl, treeUrl, type RepoRef } from "@/lib/github";
+import {
+  commitsUrl,
+  contributingUrl,
+  pullsUrl,
+  readmeUrl,
+  repoUrl,
+  treeUrl,
+  type RepoRef,
+} from "@/lib/github";
 import { safeHttpUrl } from "@/lib/safeUrl";
 import type { Contributor, Rundown, ShowState } from "@/lib/types";
 
@@ -42,6 +50,29 @@ export function About({
   return (
     <div className="flex flex-col divide-y divide-line">
       <section className="pb-4">
+        <div className="gh-box mb-4 p-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <GitPullRequestIcon className="text-success" />
+            Write the next scene
+          </h2>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-fg-muted">
+            <li>Open an episode file on GitHub, or add a new one.</li>
+            <li>Write your scene: a seed, a length, and a prompt.</li>
+            <li>Open the pull request. Viewers approve it, and it airs.</li>
+          </ol>
+          <p className="mt-2 text-sm text-fg-muted">
+            No setup, all in the browser — or hand the page to a coding agent and let it do the
+            work.
+          </p>
+          <a
+            href={contributingUrl(repo)}
+            target="_blank"
+            rel="noreferrer"
+            className="gh-btn gh-btn-primary mt-3 w-full justify-center"
+          >
+            How to add a scene
+          </a>
+        </div>
         <h2 className="mb-2 text-base font-semibold">About</h2>
         <p className="text-sm text-fg">
           <strong className="font-semibold">The first ever open source movie.</strong> It is written
@@ -61,7 +92,7 @@ export function About({
           <li className="flex items-center gap-2">
             <BookIcon className="shrink-0 text-fg-muted" />
             <a href={readmeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted">
-              README · how to write a scene
+              README · the rules of the movie
             </a>
           </li>
           <li className="flex items-center gap-2">

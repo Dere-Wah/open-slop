@@ -55,6 +55,11 @@ export function readmeUrl(ref: RepoRef): string {
   return blobUrl(ref, "README.md");
 }
 
+/** The three-step guide to adding or editing a scene, on the story branch. */
+export function contributingUrl(ref: RepoRef): string {
+  return blobUrl(ref, "CONTRIBUTING.md");
+}
+
 export function pullsUrl(ref: RepoRef): string {
   return `${repoUrl(ref)}/pulls`;
 }
