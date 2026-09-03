@@ -11,6 +11,7 @@ Read the guide that matches the task before you change anything:
 | Anything under `projector/` — feeding the model's queue, reels and snapshots, disconnects, what the viewer is told | [`skills/projector-architecture`](./skills/projector-architecture/SKILL.md) |
 | What a legal episode is — `story-tools/validate.py`, its tests, the pull-request allowlist | [`skills/story-format-validator`](./skills/story-format-validator/SKILL.md) |
 | The story branch's workflows, the vote, auto-merge, rulesets | [`skills/story-ci-and-approval`](./skills/story-ci-and-approval/SKILL.md) |
+| Anything under `viewer/` — the page's GitHub-repository look, tokens, layout, curtain, rundown scaling | [`skills/viewer-design`](./skills/viewer-design/SKILL.md) |
 
 ## Rules that apply to every change here
 
@@ -29,6 +30,10 @@ Read the guide that matches the task before you change anything:
 - **The viewer trusts only the `streamer` participant** for `show.state` and
   for chat signed as the show, and renders only http(s) `href`s. Keep it that
   way; every viewer holds a data-publish grant for chat.
+- **The viewer looks like a GitHub repository page and uses no UI package.**
+  Colours, type, and radii are the tokens in `viewer/app/globals.css`; the
+  icons are inline. Check a change at 390px and 1440px through
+  `/preview?state=…&episodes=120` before calling it done.
 - Before opening a pull request: `python3 story-tools/test_validate.py`,
   `python3 -m py_compile projector/*.py story-tools/*.py`, and
   `cd viewer && pnpm build`. `.github/workflows/code-ci.yml` runs the same.

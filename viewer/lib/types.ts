@@ -8,7 +8,11 @@
 // Both come off the wire from the room's streamer participant only; the viewer
 // ignores a `show.state` packet from anyone else.
 
-export type ShowStatus = "warming" | "downtime" | "live";
+// `warming`: the projector is up but the model has not answered, or the story
+// cannot be read. `loading`: the curtain — the model is building the opening
+// and nothing plays until enough film is buffered. `downtime`: the model was
+// lost; the screening restarts from the top (through `loading`). `live`: on air.
+export type ShowStatus = "warming" | "loading" | "downtime" | "live";
 
 export interface ShowState {
   v: number;
@@ -18,6 +22,12 @@ export interface ShowState {
   screening?: number;
   sha?: string;
   next_sha?: string; // what the next screening was snapshotted at, when known
+  // While `loading`:
+  buffered_seconds?: number; // film built and waiting behind the curtain
+  target_seconds?: number; // what must be built before the first frame
+  film_seconds?: number; // the whole screening's length
+  scene_total?: number;
+  restart?: boolean; // this screening was on air and is starting over
   episode_index?: number;
   episodes_total?: number;
   episode_title?: string;

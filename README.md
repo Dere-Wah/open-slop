@@ -9,22 +9,28 @@
 
 Open Slop is a film that never stops playing, that anyone can write. The
 screenplay lives in git as one episode per file. A projector reads the story
-branch, renders every scene with the [`reactor/fast-h3`](https://docs.reactor.inc)
-video model at the seed the scene names, and broadcasts the result into a
-LiveKit room. Shortly before each screening starts, the projector snapshots the
+branch, renders every scene live on [Reactor](https://reactor.inc) — the
+[`reactor/fast-h3`](https://docs.reactor.inc) video model, at the seed the
+scene names, one session held open for the whole run — and broadcasts the
+result into a LiveKit room. Nothing is pre-rendered; Reactor is what turns a
+merged prompt into picture, and it sponsors the show. Shortly before each screening starts, the projector snapshots the
 branch and plays exactly that — so a pull request merged at 16:00 is on air
 from the first screening snapshotted after it, credited to its author on screen.
 
 ```
  story branch (git) ──▶ projector (Python) ──▶ LiveKit room ──▶ viewer (Next.js)
    episodes, scenes        snapshots a screening,   the broadcast     player, rundown,
-   at fixed seeds          keeps the queue fed                        countdown, chat
+   at fixed seeds          keeps the queue fed                        credits, chat
 ```
 
 The model's queue is short, so the projector cannot queue a film; it keeps
 about a minute of clips ahead of playout and takes the next screening's
-snapshot with that same lead. If the model session drops, the stream shows
-downtime and the screening restarts from the top when it is back.
+snapshot with that same lead. A fresh session opens behind a curtain: nothing
+plays until about thirty seconds of the opening are built, and the viewer
+draws that wait as a pre-show (title, programme, a leader ring counting the
+seconds still to build) rather than the model's first clip stuttering out
+ahead of the builds. If the model session drops, the stream shows downtime,
+buffers again, and the screening restarts from the top.
 
 ## The two branches
 
@@ -45,13 +51,13 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | --- | --- |
 | `projector/` | The Python projector: reads the story, drives the model, publishes to LiveKit. |
 | `projector/story.py` | Mirrors the story branch and credits each scene by `git blame` (plus `Co-authored-by`). |
-| `projector/screening.py` | The queue's only writer: snapshots a screening into a reel, feeds and chains scenes, restarts on a lost session. |
-| `projector/broadcast.py` | The 1 Hz cursor (`warming` / `downtime` / `live`) and the per-screening rundown in room metadata. |
+| `projector/screening.py` | The queue's only writer: snapshots a screening into a reel, feeds and chains scenes, holds the curtain until the opening is built, restarts on a lost session. |
+| `projector/broadcast.py` | The 1 Hz cursor (`warming` / `loading` / `downtime` / `live`) and the per-screening rundown in room metadata. |
 | `projector/reactor_link.py` | The one model session, with `session_ready` / `session_lost` events. |
 | `projector/{pacer,publisher}.py` | The media path, unchanged from the Reactor example. |
 | `story-tools/validate.py` | The one validator, shared by CI and the projector. |
-| `viewer/` | The Next.js viewer: player, overlay, countdown, rundown, chat. |
-| `skills/` | Guides for changing this branch: the projector, the format, the CI and vote. |
+| `viewer/` | The Next.js viewer, laid out like a GitHub repository page: the player, the curtain (pre-show while nothing is on air), a now-playing bar, the rundown and credits (ending with when the next screening starts), an About panel, chat. No UI package; the tokens are in `viewer/app/globals.css`. |
+| `skills/` | Guides for changing this branch: the projector, the format, the CI and vote, the viewer's design. |
 | `assets/how-to-approve.png` | The three-step screenshot strip the story bot embeds in its "Audience vote" comment. Served raw from this branch. |
 | `AGENTS.md` | Points coding agents at the skills and states the rules that apply everywhere. |
 
@@ -83,6 +89,10 @@ cp .env.example .env.local   # the same LIVEKIT_* values and room name
 pnpm install
 pnpm dev                     # http://localhost:3000
 ```
+
+While working on the page itself, `http://localhost:3000/preview?state=loading&episodes=120`
+renders it from fixtures — every state, a long film — without a projector
+running. It is development-only.
 
 ## Develop
 

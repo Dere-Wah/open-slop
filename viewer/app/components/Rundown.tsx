@@ -1,187 +1,346 @@
 "use client";
 
-import { formatDuration } from "@/lib/format";
+import { useMemo, useRef, useState, type Ref } from "react";
+import { Avatar } from "./Avatar";
+import { ChevronRightIcon, ClockIcon, FileIcon, GitCommitIcon, ListIcon, SearchIcon } from "./Icons";
+import { formatClock, formatDuration } from "@/lib/format";
+import { blobUrl, type RepoRef } from "@/lib/github";
 import { safeHttpUrl } from "@/lib/safeUrl";
 import type { Rundown as RundownData, RundownEpisode, ShowState } from "@/lib/types";
 
 /**
- * The ordered episode list, read entirely off LiveKit room metadata — no call
- * to GitHub. Each episode expands to its scenes; the scene on air is
- * highlighted. Every episode links to its file and every scene to its commit,
- * so this panel is also the credits: who wrote what, assembled from git.
+ * The film's table of contents, drawn like the file list on a GitHub
+ * repository page: one row per episode, each expanding to its scenes, the
+ * scene on air highlighted. Every episode links to its file and every scene
+ * to its commit, so this is also the credits — who wrote what, assembled from
+ * git, with GitHub avatars for the people who have one.
  *
- * Room metadata has a size cap, so a very long film arrives with its
- * per-scene contributor lists stripped first and, past that, its tail cut;
- * the panel says so and points at the branch for the rest.
+ * It reads entirely off LiveKit room metadata; nothing here calls GitHub.
+ *
+ * Built to hold a long film. Rows render in pages of `PAGE` with a "show
+ * more" footer, a filter narrows by title, file, or author, and the episode
+ * on air is always within the rendered page, with a button that scrolls to
+ * it — never on its own, so a reader is not yanked around when the scene
+ * changes. A 200-episode film costs the page a few dozen rows, not
+ * thousands. Room metadata has a size cap too: a very long film arrives with
+ * its per-scene contributor lists stripped first and, past that, its tail
+ * cut; the footer says so and points at the branch for the rest.
+ *
+ * The last line of the box is when the next screening starts — a wall-clock
+ * time, given as "about" because a scene can hold between clips. It is the
+ * one place the page says so: a ticking countdown read as a deadline.
+ * `nextScreeningAt` is already in the viewer's own clock (ShowApp corrects the
+ * projector's estimate for skew) and null while nothing is on air.
  */
 
-/** `.../tree/<branch>` → `.../blob/<branch>`, or null when the URL is not one. */
-function blobBaseOf(storyUrl: unknown): string | null {
-  const url = safeHttpUrl(storyUrl);
-  if (!url || !url.includes("/tree/")) return null;
-  return url.replace("/tree/", "/blob/");
-}
+const PAGE = 25;
+
 export function Rundown({
   rundown,
   state,
+  repo,
+  nextScreeningAt = null,
+  compact = false,
 }: {
   rundown: RundownData | null;
   state: ShowState | null;
+  repo: RepoRef;
+  nextScreeningAt?: number | null;
+  compact?: boolean;
 }) {
-  if (!rundown) {
-    return (
-      <aside className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-        <h2 className="text-sm font-medium">Rundown</h2>
-        <p className="mt-2 text-xs text-zinc-600">loading the screenplay…</p>
-      </aside>
-    );
-  }
+  const [filter, setFilter] = useState("");
+  const [shown, setShown] = useState(PAGE);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const currentRef = useRef<HTMLLIElement | null>(null);
 
-  const onAir = state?.screening === rundown.screening;
+  const onAir = !!rundown && state?.status === "live" && state.screening === rundown.screening;
   const currentEpisode = onAir ? state?.episode_index : undefined;
   const currentScene = onAir ? state?.scene_number : undefined;
-  const blobBase = blobBaseOf(rundown.story_url);
-  const storyUrl = safeHttpUrl(rundown.story_url);
+
+  const episodes = rundown?.episodes ?? [];
+  const query = filter.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!query) return episodes;
+    return episodes.filter((episode) => {
+      if ((episode.title ?? "").toLowerCase().includes(query)) return true;
+      if (episode.file.toLowerCase().includes(query)) return true;
+      return episode.scenes.some(
+        (scene) =>
+          scene.author.toLowerCase().includes(query) ||
+          scene.contributors.some((person) => person.name.toLowerCase().includes(query)),
+      );
+    });
+  }, [episodes, query]);
+
+  // The episode on air must be within the rendered page, and in view.
+  const currentPosition =
+    currentEpisode === undefined ? -1 : filtered.findIndex((episode) => episode.i === currentEpisode);
+  const visible = Math.max(shown, currentPosition + 1);
+  const rows = filtered.slice(0, visible);
+
+  function toggle(file: string, isCurrent: boolean) {
+    setOpen((prev) => ({ ...prev, [file]: !(prev[file] ?? isCurrent) }));
+  }
 
   return (
-    <aside className="flex min-h-0 flex-col rounded-xl border border-zinc-800 bg-zinc-900/40">
-      <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-medium">Rundown &amp; credits</h2>
-        <p className="mt-0.5 text-xs text-zinc-500">
-          {rundown.episodes.length} episode
-          {rundown.episodes.length === 1 ? "" : "s"} ·{" "}
-          {formatDuration(rundown.total_seconds)} · every scene links to its commit
+    <section className="gh-box overflow-hidden" id="rundown">
+      <header className="gh-box-header flex-wrap justify-between gap-y-2">
+        <div className="flex items-center gap-2">
+          <ListIcon className="text-fg-muted" />
+          <h2 className="font-semibold">Rundown &amp; credits</h2>
+          {rundown && (
+            <span className="text-fg-muted">
+              {episodes.length} episode{episodes.length === 1 ? "" : "s"} ·{" "}
+              {formatDuration(rundown.total_seconds)}
+            </span>
+          )}
+        </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          {currentPosition >= 0 && (
+            <button
+              type="button"
+              onClick={() => currentRef.current?.scrollIntoView({ block: "center", behavior: "smooth" })}
+              className="gh-btn h-7 shrink-0 px-2.5 text-xs"
+              title="scroll to the episode on air"
+            >
+              <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-success" />
+              Now playing · {String((currentEpisode ?? 0) + 1).padStart(2, "0")}
+            </button>
+          )}
+          {episodes.length > 6 && (
+          <label className="relative block w-full sm:w-56">
+            <SearchIcon
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle"
+            />
+            <input
+              value={filter}
+              onChange={(event) => {
+                setFilter(event.target.value);
+                setShown(PAGE);
+              }}
+              placeholder="Find an episode or author"
+              className="gh-input h-7 pl-8 text-xs"
+              aria-label="Filter episodes"
+            />
+          </label>
+          )}
+        </div>
+      </header>
+
+      {!rundown ? (
+        <p className="px-4 py-6 text-center text-sm text-fg-muted">Loading the screenplay…</p>
+      ) : rows.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-fg-muted">
+          Nothing matches <span className="font-mono text-fg">{filter}</span>.
         </p>
-      </div>
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-        {rundown.episodes.map((episode) => (
-          <EpisodeRow
-            key={episode.file}
-            episode={episode}
-            blobBase={blobBase}
-            isCurrent={currentEpisode === episode.i}
-            currentScene={currentEpisode === episode.i ? currentScene : undefined}
-          />
-        ))}
-        {rundown.truncated && (
-          <p className="px-2 py-2 font-mono text-[11px] text-zinc-600">
-            the film is longer than fits here —{" "}
-            {storyUrl ? (
-              <a href={storyUrl} target="_blank" rel="noreferrer" className="hover:text-zinc-400">
-                the rest is on the branch ↗
+      ) : (
+        <ol className={compact ? "max-h-[60vh] overflow-y-auto" : ""}>
+          {rows.map((episode) => {
+            const isCurrent = currentEpisode === episode.i;
+            return (
+              <EpisodeRow
+                key={episode.file}
+                ref={isCurrent ? currentRef : null}
+                episode={episode}
+                repo={repo}
+                isCurrent={isCurrent}
+                currentScene={isCurrent ? currentScene : undefined}
+                expanded={open[episode.file] ?? isCurrent}
+                onToggle={() => toggle(episode.file, isCurrent)}
+              />
+            );
+          })}
+        </ol>
+      )}
+
+      {rundown && (rows.length < filtered.length || rundown.truncated) && (
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-canvas-subtle px-4 py-2 text-xs text-fg-muted">
+          {rows.length < filtered.length ? (
+            <button
+              type="button"
+              onClick={() => setShown((value) => value + PAGE)}
+              className="gh-link font-medium"
+            >
+              Show {Math.min(PAGE, filtered.length - rows.length)} more of {filtered.length}
+            </button>
+          ) : (
+            <span />
+          )}
+          {rundown.truncated && (
+            <span>
+              The film is longer than fits here —{" "}
+              <a
+                href={safeHttpUrl(rundown.story_url) ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="gh-link"
+              >
+                the rest is on the branch
               </a>
-            ) : (
-              "the rest is on the branch"
+              .
+            </span>
+          )}
+        </footer>
+      )}
+
+      {rundown && nextScreeningAt !== null && (
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-line px-4 py-2.5 text-xs text-fg-muted">
+          <ClockIcon size={14} className="shrink-0" />
+          <span>
+            The next screening starts {state?.stalled ? "no earlier than" : "at"} about{" "}
+            <span className="font-semibold text-fg">{formatClock(nextScreeningAt)}</span>
+            {state?.next_sha && state.next_sha !== rundown.sha && (
+              <>
+                , with the story at{" "}
+                <span className="font-mono text-fg">{state.next_sha}</span>
+              </>
             )}
-          </p>
-        )}
-      </div>
-    </aside>
+            .
+          </span>
+        </p>
+      )}
+    </section>
   );
 }
 
 function EpisodeRow({
+  ref,
   episode,
-  blobBase,
+  repo,
   isCurrent,
   currentScene,
+  expanded,
+  onToggle,
 }: {
+  ref: Ref<HTMLLIElement> | null;
   episode: RundownEpisode;
-  blobBase: string | null;
+  repo: RepoRef;
   isCurrent: boolean;
   currentScene?: number;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const authors = distinctAuthors(episode);
-  const fileUrl = blobBase ? `${blobBase}/${encodeURIComponent(episode.file)}` : null;
+  const lastCommit = episode.scenes[episode.scenes.length - 1]?.commit;
   return (
-    <details open={isCurrent} className="rounded-lg px-2 py-1">
-      <summary className="cursor-pointer list-none">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="flex items-baseline gap-2 truncate">
-            <span
-              className={`font-mono text-xs ${isCurrent ? "text-brand" : "text-zinc-500"}`}
-            >
-              {String(episode.i + 1).padStart(2, "0")}
-            </span>
-            <span
-              className={`truncate text-sm ${isCurrent ? "text-zinc-100" : "text-zinc-300"}`}
-            >
-              {episode.title || episode.file}
-            </span>
+    <li
+      ref={ref}
+      className={`border-t border-line-muted first:border-t-0 ${isCurrent ? "bg-accent-subtle" : ""}`}
+    >
+      <div className="flex items-center gap-3 px-3 py-2 hover:bg-canvas-subtle sm:px-4">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <ChevronRightIcon
+            size={14}
+            className={`shrink-0 text-fg-subtle transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
+          <span className="w-7 shrink-0 font-mono text-xs text-fg-muted">
+            {String(episode.i + 1).padStart(2, "0")}
           </span>
-          <span className="shrink-0 font-mono text-[11px] text-zinc-600">
-            {formatDuration(episode.seconds)}
+          <span
+            className={`truncate text-sm ${isCurrent ? "font-semibold text-fg" : "text-fg"}`}
+          >
+            {episode.title || episode.file}
           </span>
+          {isCurrent && (
+            <span className="gh-counter shrink-0 bg-success-subtle text-success">on air</span>
+          )}
+        </button>
+        <span className="hidden shrink-0 items-center -space-x-1.5 sm:flex" title={authors.join(", ")}>
+          {authors.slice(0, 4).map((name) => (
+            <Avatar key={name} name={name} size={20} />
+          ))}
+          {authors.length > 4 && (
+            <span className="gh-avatar inline-flex h-5 items-center justify-center bg-canvas-overlay px-1 text-[10px] text-fg-muted">
+              +{authors.length - 4}
+            </span>
+          )}
         </span>
-        {authors.length > 0 && (
-          <span className="mt-0.5 block truncate pl-6 font-mono text-[11px] text-zinc-600">
-            by {authors.join(", ")}
-          </span>
-        )}
-      </summary>
-      <ol className="mt-1 space-y-1 pl-6">
-        {episode.scenes.map((scene) => {
-          const contributors = scene.contributors ?? [];
-          const extra = Math.max(0, contributors.length - 1);
-          const active = currentScene === scene.n;
-          const authorUrl = safeHttpUrl(scene.author_url);
-          const commitUrl = safeHttpUrl(scene.commit_url);
-          return (
-            <li
-              key={scene.n}
-              className={`flex items-baseline justify-between gap-2 rounded px-2 py-0.5 text-xs ${
-                active ? "bg-brand/10" : ""
-              }`}
-            >
-              <span className="flex items-baseline gap-2 truncate">
-                <span className="font-mono text-zinc-600">{scene.n}.</span>
-                {authorUrl ? (
-                  <a
-                    href={authorUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-zinc-300 hover:text-brand"
-                  >
-                    {scene.author}
-                  </a>
-                ) : (
-                  <span className="text-zinc-400">{scene.author}</span>
-                )}
-                {extra > 0 && <span className="text-zinc-600">+{extra}</span>}
-              </span>
-              <span className="flex shrink-0 items-baseline gap-2 font-mono text-[11px] text-zinc-600">
-                <span>{formatDuration(scene.seconds)}</span>
-                {scene.commit &&
-                  (commitUrl ? (
+        <span className="hidden w-24 shrink-0 items-center justify-end gap-1 font-mono text-xs text-fg-muted md:flex">
+          {lastCommit && <GitCommitIcon size={14} className="text-fg-subtle" />}
+          {lastCommit}
+        </span>
+        <span className="w-14 shrink-0 text-right font-mono text-xs text-fg-muted">
+          {formatDuration(episode.seconds)}
+        </span>
+      </div>
+
+      {expanded && (
+        <ol className="border-t border-line-muted bg-canvas-inset/40 py-1">
+          {episode.scenes.map((scene) => {
+            const active = currentScene === scene.n;
+            const authorUrl = safeHttpUrl(scene.author_url);
+            const commitUrl = safeHttpUrl(scene.commit_url);
+            const extra = Math.max(0, (scene.contributors?.length ?? 0) - 1);
+            return (
+              <li
+                key={scene.n}
+                className={`flex items-center gap-3 py-1.5 pl-[3.25rem] pr-3 text-sm sm:pl-[3.75rem] sm:pr-4 ${
+                  active ? "border-l-2 border-accent bg-accent-subtle" : "border-l-2 border-transparent"
+                }`}
+              >
+                <span className="w-7 shrink-0 font-mono text-xs text-fg-subtle">{scene.n}</span>
+                <Avatar name={scene.author} url={scene.author_url} size={16} />
+                <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+                  {authorUrl ? (
                     <a
-                      href={commitUrl}
+                      href={authorUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="hover:text-zinc-300"
+                      className="truncate text-fg hover:text-accent hover:underline"
                     >
-                      {scene.commit}
+                      {scene.author}
                     </a>
                   ) : (
-                    <span>{scene.commit}</span>
-                  ))}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      {fileUrl ? (
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-1 block pl-6 font-mono text-[11px] text-zinc-600 hover:text-zinc-400"
-        >
-          {episode.file} ↗
-        </a>
-      ) : (
-        <span className="mt-1 block pl-6 font-mono text-[11px] text-zinc-600">{episode.file}</span>
+                    <span className="truncate text-fg">{scene.author}</span>
+                  )}
+                  {extra > 0 && (
+                    <span className="text-xs text-fg-muted" title="others who wrote lines of this scene">
+                      +{extra}
+                    </span>
+                  )}
+                  {active && <span className="text-xs text-success">· playing</span>}
+                </span>
+                <span className="hidden w-24 shrink-0 items-center justify-end gap-1 font-mono text-xs text-fg-muted md:flex">
+                  {scene.commit &&
+                    (commitUrl ? (
+                      <a
+                        href={commitUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-accent hover:underline"
+                      >
+                        {scene.commit}
+                      </a>
+                    ) : (
+                      scene.commit
+                    ))}
+                </span>
+                <span className="w-14 shrink-0 text-right font-mono text-xs text-fg-muted">
+                  {formatDuration(scene.seconds)}
+                </span>
+              </li>
+            );
+          })}
+          <li className="flex items-center gap-2 py-1.5 pl-[3.25rem] pr-3 text-xs sm:pl-[3.75rem] sm:pr-4">
+            <FileIcon size={14} className="text-fg-subtle" />
+            <a
+              href={blobUrl(repo, episode.file)}
+              target="_blank"
+              rel="noreferrer"
+              className="gh-link font-mono"
+            >
+              {episode.file}
+            </a>
+          </li>
+        </ol>
       )}
-    </details>
+    </li>
   );
 }
 

@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@reactor-team/ui": "^1.4.1",
     "livekit-client": "^2.9.0",
     "livekit-server-sdk": "^2.9.0",
     "next": "^15.5.0",

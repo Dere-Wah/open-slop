@@ -8,14 +8,6 @@ export function formatDuration(seconds: number): string {
   return `${minutes}m ${String(rest).padStart(2, "0")}s`;
 }
 
-/** "4:12" from a millisecond remaining count; "0:00" once it passes. */
-export function formatCountdown(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const rest = total % 60;
-  return `${minutes}:${String(rest).padStart(2, "0")}`;
-}
-
 /** "16:38" wall-clock time from an epoch-ms instant, in the viewer's zone. */
 export function formatClock(epochMs: number): string {
   return new Date(epochMs).toLocaleTimeString([], {

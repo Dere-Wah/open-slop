@@ -3,12 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConnectionState, RemoteTrack, Room, RoomEvent } from "livekit-client";
 
-import { Header } from "./components/Header";
-import { Player } from "./components/Player";
-import { Overlay } from "./components/Overlay";
-import { Countdown } from "./components/Countdown";
-import { Rundown } from "./components/Rundown";
-import { Chat, type ChatEntry } from "./components/Chat";
+import { ShowPage } from "./ShowPage";
+import type { ChatEntry } from "./components/Chat";
 import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/types";
 
 /**
@@ -30,6 +26,15 @@ import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/type
  *
  * The LiveKit client resumes transient drops on its own; when it gives up,
  * this component re-fetches a token and rejoins in a loop.
+ *
+ * Whenever nothing is on air the player is covered by the curtain — the
+ * pre-show drawn on this side — rather than showing the black frames the
+ * stream carries meanwhile. "Nothing on air" is read off the cursor's status,
+ * and off its silence: a cursor arrives every second, so one that has not
+ * arrived for `STATE_STALE_MS` means the projector is gone, and the last
+ * packet it sent must not keep a stale "live" card up.
+ *
+ * Everything visual is ShowPage's; this component only owns the room.
  */
 
 const CHAT_TOPIC = "show.chat";
@@ -38,6 +43,7 @@ const STREAMER_IDENTITY = "streamer";
 const SHOW_AUTHOR = "show";
 const RECONNECT_DELAY_MS = 3_000;
 const CHAT_LIMIT = 200;
+const STATE_STALE_MS = 6_000;
 
 type Status = "connecting" | "live" | "offline";
 
@@ -75,8 +81,15 @@ export function ShowApp() {
   const [showState, setShowState] = useState<ShowState | null>(null);
   const [rundown, setRundown] = useState<RundownData | null>(null);
   const [endsAtLocal, setEndsAtLocal] = useState<number | null>(null);
+  const [stateSeenAt, setStateSeenAt] = useState<number | null>(null);
+  const [tick, setTick] = useState(() => Date.now());
   const roomRef = useRef<Room | null>(null);
   const nextId = useRef(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, []);
 
   const appendChat = useCallback((author: string, text: string) => {
     nextId.current += 1;
@@ -86,6 +99,7 @@ export function ShowApp() {
 
   const applyState = useCallback((state: ShowState) => {
     setShowState(state);
+    setStateSeenAt(Date.now());
     // Correct the server's end time into the viewer's own clock, so the
     // countdown is right even when the two clocks disagree.
     if (state.status === "live" && typeof state.ends_at === "number") {
@@ -195,29 +209,23 @@ export function ShowApp() {
     return episode.scenes.find((scene) => scene.n === showState.scene_number) ?? null;
   }, [rundown, showState]);
 
+  // The projector speaks once a second; silence means it is gone, whatever
+  // its last packet said. Until it speaks at all, the room is off air too.
+  const offAir =
+    status === "live" && (stateSeenAt === null || tick - stateSeenAt > STATE_STALE_MS);
+
   return (
-    <main className="mx-auto flex h-dvh max-w-6xl flex-col gap-4 p-4 lg:p-6">
-      <Header status={status} sha={showState?.sha} storyUrl={rundown?.story_url} />
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex min-h-0 flex-col gap-4 lg:col-span-2">
-          <Player
-            videoTrack={videoTrack}
-            audioTrack={audioTrack}
-            status={status}
-            progress={showState?.progress}
-            overlay={<Overlay state={showState} scene={currentScene} />}
-          />
-          <Countdown
-            endsAt={endsAtLocal}
-            stalled={!!showState?.stalled}
-            status={showState?.status}
-            sha={showState?.sha}
-            nextSha={showState?.next_sha}
-          />
-          <Rundown rundown={rundown} state={showState} />
-        </div>
-        <Chat entries={chat} onSend={sendChat} connected={status === "live"} />
-      </div>
-    </main>
+    <ShowPage
+      connection={status}
+      showState={showState}
+      rundown={rundown}
+      currentScene={currentScene}
+      endsAtLocal={endsAtLocal}
+      offAir={offAir}
+      videoTrack={videoTrack}
+      audioTrack={audioTrack}
+      chat={chat}
+      onSendChat={sendChat}
+    />
   );
 }

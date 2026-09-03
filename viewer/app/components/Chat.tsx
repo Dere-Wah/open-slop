@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Avatar } from "./Avatar";
+import { CommentIcon } from "./Icons";
+import type { RepoRef } from "@/lib/github";
 
 export interface ChatEntry {
   id: number;
@@ -13,19 +16,25 @@ const NAME_MAX = 24;
 const TEXT_MAX = 500;
 
 /**
- * The room chat: viewers talking while they watch. It is only chat — the way
- * to change the film is a pull request on the story branch, not a message
- * here. A display name is required before sending; it persists in
- * localStorage.
+ * The room chat: viewers talking while they watch, laid out like a GitHub
+ * conversation — an avatar disc, a bold name, the line. It is only chat; the
+ * way to change the film is a pull request on the story branch, not a message
+ * here, and the header says so. Messages signed by the show carry a `bot`
+ * label the way GitHub marks its apps. A display name is required before
+ * sending; it persists in localStorage.
  */
 export function Chat({
   entries,
   onSend,
   connected,
+  repo,
+  className = "",
 }: {
   entries: ChatEntry[];
   onSend: (author: string, text: string) => boolean;
   connected: boolean;
+  repo: RepoRef;
+  className?: string;
 }) {
   const [name, setName] = useState("");
   const [draft, setDraft] = useState("");
@@ -48,68 +57,75 @@ export function Chat({
   }
 
   return (
-    <aside className="flex min-h-0 w-full flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/40">
-      <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-medium">Chat</h2>
-        <p className="mt-0.5 text-xs text-zinc-500">
-          Talk while you watch. To change the film, open a pull request.
-        </p>
-      </div>
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4 text-sm"
-      >
+    <section className={`gh-box flex min-h-0 flex-col overflow-hidden ${className}`} id="chat">
+      <header className="gh-box-header justify-between">
+        <div className="flex items-center gap-2">
+          <CommentIcon className="text-fg-muted" />
+          <h2 className="font-semibold">Chat</h2>
+          {entries.length > 0 && <span className="gh-counter">{entries.length}</span>}
+        </div>
+        <span className="hidden text-xs text-fg-muted sm:inline">to change the film, open a PR</span>
+      </header>
+
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
         {entries.length === 0 && (
-          <p className="text-xs text-zinc-600">No messages yet — say hello.</p>
+          <p className="py-6 text-center text-sm text-fg-muted">No messages yet — say hello.</p>
         )}
-        {entries.map((entry) => (
-          <p key={entry.id} className="leading-5">
-            <span
-              className={
-                entry.author === "show"
-                  ? "font-mono text-xs text-brand"
-                  : "font-mono text-xs text-zinc-400"
-              }
-            >
-              {entry.author}
-            </span>{" "}
-            <span className={entry.author === "show" ? "text-zinc-300" : ""}>
-              {entry.text}
-            </span>
-          </p>
-        ))}
+        <ul className="flex flex-col gap-2">
+          {entries.map((entry) => {
+            const isShow = entry.author === "show";
+            return (
+              <li key={entry.id} className="flex items-start gap-2 text-sm leading-5">
+                <Avatar name={isShow ? `@${repo.owner}` : entry.author} size={20} className="mt-0.5" />
+                <p className="min-w-0 break-words">
+                  <span className={`font-semibold ${isShow ? "text-accent" : "text-fg"}`}>
+                    {isShow ? repo.repo : entry.author}
+                  </span>
+                  {isShow && <span className="gh-label ml-1.5 h-4 px-1.5 text-[10px]">bot</span>}{" "}
+                  <span className="text-fg">{entry.text}</span>
+                </p>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-      <div className="space-y-2 border-t border-zinc-800 p-3">
-        <input
-          value={name}
-          onChange={(event) => {
-            const value = event.target.value.slice(0, NAME_MAX);
-            setName(value);
-            localStorage.setItem(NAME_KEY, value);
-          }}
-          placeholder="your name"
-          className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs outline-none focus:border-zinc-600"
-        />
+
+      <form
+        className="flex flex-col gap-2 border-t border-line bg-canvas-subtle p-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
         <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={(event) => {
+              const value = event.target.value.slice(0, NAME_MAX);
+              setName(value);
+              localStorage.setItem(NAME_KEY, value);
+            }}
+            placeholder="Your name"
+            aria-label="Your name"
+            className="gh-input w-32 shrink-0"
+          />
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") submit();
-            }}
-            placeholder={connected ? "say something…" : "connecting…"}
+            placeholder={connected ? "Say something…" : "Connecting…"}
+            aria-label="Message"
             disabled={!connected}
-            className="flex-1 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm outline-none focus:border-zinc-600 disabled:opacity-50"
+            className="gh-input min-w-0 flex-1"
           />
           <button
-            onClick={submit}
+            type="submit"
             disabled={!connected || !draft.trim() || !name.trim()}
-            className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg disabled:opacity-40"
+            className="gh-btn gh-btn-primary shrink-0 disabled:opacity-50"
           >
             Send
           </button>
         </div>
-      </div>
-    </aside>
+      </form>
+    </section>
   );
 }

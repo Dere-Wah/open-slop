@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@reactor-team/ui':
-        specifier: ^1.4.1
-        version: 1.4.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       livekit-client:
         specifier: ^2.9.0
         version: 2.22.2(@types/dom-mediacapture-record@1.0.22)
@@ -279,12 +276,6 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
-
-  '@reactor-team/ui@1.4.1':
-    resolution: {integrity: sha512-/05IYSlCqbvA+cj+Boz8/lQkeXpnMFKWvfxZeBvVxU2ePI8eCZ5Ey+1EKbUyuGiWPZ7QT7QeKtHcsrN1LN9hkQ==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -802,11 +793,6 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@15.5.25':
     optional: true
-
-  '@reactor-team/ui@1.4.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
-    dependencies:
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
 
   '@swc/helpers@0.5.15':
     dependencies:
