@@ -28,15 +28,15 @@ jobs:
 
             const body = [
               MARKER,
-              `### Welcome to Open Slop, @${pr.user.login}`,
+              `## 🎬 Welcome to Open Slop, @${pr.user.login}`,
               "",
-              "You are writing a scene of a film that anyone can write, and the audience approves.",
+              "You are writing a scene of a film that anyone can write, and the audience approves. Here is what happens next:",
               "",
-              "1. A format check runs automatically and comments what it found.",
-              "2. Anyone can vote it in with a normal GitHub review: **Files changed → Review changes → Approve**. The bot's tally comment says how many approvals it needs and how long it waits after your last push; reach that and it merges on its own, no maintainer needed. Pushing a new commit clears the votes.",
-              "3. The projector snapshots this branch about a minute of film before each screening starts. Once merged, your scene is on air at [openslop.live](https://openslop.live) from the first screening snapshotted after the merge, credited to you.",
+              "1. 🔍 A format check runs automatically and comments what it found.",
+              "2. 🗳️ Anyone can vote it in with a normal GitHub review: **Files changed → Review changes → Approve**. The **Audience vote** comment below shows how many approvals it needs, how long it waits after your last push, and a step-by-step with screenshots. Reach it and it merges on its own — no maintainer needed. Pushing a new commit clears the votes.",
+              "3. 📺 Once merged, your scene is on air at [openslop.live](https://openslop.live) from the next screening, credited to you.",
               "",
-              `A pull request may only touch episode files and \`README.md\` / \`STYLE.md\` / \`LICENSE\`. See [\`skills/how-approval-works\`](${skills}/how-approval-works/SKILL.md) and [\`skills/writing-a-scene\`](${skills}/writing-a-scene/SKILL.md).`,
+              `📏 A pull request may only touch episode files and \`README.md\` / \`STYLE.md\` / \`LICENSE\`. Guides: [\`skills/writing-a-scene\`](${skills}/writing-a-scene/SKILL.md) · [\`skills/how-approval-works\`](${skills}/how-approval-works/SKILL.md).`,
             ].join("\n");
 
             await github.rest.issues.createComment({

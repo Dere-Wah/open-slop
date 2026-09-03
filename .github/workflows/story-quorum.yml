@@ -72,6 +72,9 @@ jobs:
             const BOT = "github-actions[bot]";
             const ANCHOR_CONTEXTS = new Set(["story/validate", "story/quorum"]);
             const MARKER = "<!-- open-slop:quorum -->";
+            // Screenshots live on the code branch; the story branch holds no
+            // binaries.
+            const ASSETS = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/code/assets`;
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -207,24 +210,49 @@ jobs:
                 owner, repo, sha: head, context: "story/quorum", state, description,
               });
 
+              const headline = blocked
+                ? "🚫 **Blocked by a maintainer.** It will not merge until they `/unblock` it."
+                : count >= QUORUM && cooled
+                  ? "✅ **Enough approvals.** It merges as soon as the format check is green."
+                  : count >= QUORUM
+                    ? `⏳ **Enough approvals.** Merges in about ${minutesLeft} minute(s).`
+                    : `🗳️ **Need ${QUORUM - count} more approval(s).** Anyone can vote — see below.`;
+
               const lines = [
                 MARKER,
-                `### Audience vote: ${count}/${QUORUM}`,
+                `## 🎬 Audience vote: ${count}/${QUORUM}`,
                 "",
-                blocked
-                  ? "This pull request is **blocked by a maintainer** and will not merge until they `/unblock` it."
-                  : count >= QUORUM && cooled
-                    ? "Enough approvals. It merges as soon as the format check is green."
-                    : count >= QUORUM
-                      ? `Enough approvals — merges in about ${minutesLeft} minute(s).`
-                      : `Need ${QUORUM - count} more. To vote: **Files changed → Review changes → Approve**.`,
+                headline,
                 "",
-                approvers.length ? `Approved by: ${approvers.map((u) => "@" + u).join(", ")}` : "_No approvals yet._",
+                approvers.length
+                  ? `**Approved by:** ${approvers.map((u) => "@" + u).join(", ")}`
+                  : "_No approvals yet._",
                 tooNew.length
                   ? `_Not counted (account younger than ${MIN_ACCOUNT_AGE_DAYS} days): ${tooNew.map((u) => "@" + u).join(", ")}_`
                   : null,
                 "",
-                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can approve; comments do not count as votes. An approval is for the commit it was given on, so a new push clears the votes and restarts the ${COOLING_OFF_MINUTES}-minute wait. To withdraw, submit a "Request changes" review. This tally refreshes every few minutes, or at once when anyone comments._`,
+                "<details>",
+                "<summary>👉 <b>How to approve</b> (it is a normal GitHub review)</summary>",
+                "",
+                "1. Open the **Files changed** tab at the top of this pull request.",
+                "",
+                `   <img src="${ASSETS}/approve-1-files-changed.png" alt="The Files changed tab" width="720">`,
+                "",
+                "2. Click the green **Submit review** button on the right.",
+                "",
+                `   <img src="${ASSETS}/approve-2-submit-review.png" alt="The Submit review button" width="720">`,
+                "",
+                "3. Pick **Approve**, then **Submit review**.",
+                "",
+                `   <img src="${ASSETS}/approve-3-choose-approve.png" alt="Choose Approve, then Submit review" width="720">`,
+                "",
+                "</details>",
+                "",
+                "### 📏 The rules",
+                `- 👤 Anyone with a GitHub account older than **${MIN_ACCOUNT_AGE_DAYS} days** can approve. Comments do not count as votes.`,
+                `- 📌 An approval is for the commit it was given on. A new push clears the votes and restarts the **${COOLING_OFF_MINUTES}-minute** wait.`,
+                "- ↩️ To withdraw, submit a **Request changes** review.",
+                "- 🔄 This tally refreshes every few minutes, or at once when anyone comments.",
               ].filter((line) => line !== null);
               const body = lines.join("\n");
 
