@@ -5,12 +5,21 @@
 Watch it at **[openslop.live](https://openslop.live)**.
 
 This branch is the movie. Each `NNNN-title.md` file is one episode. A projector
-reads the files, renders every scene with an AI video model, and streams the
-result 24/7. When the movie ends, it starts over with whatever is on this branch
+reads the files, renders every scene live on [Reactor](https://reactor.inc), and
+streams the result 24/7. When the movie ends, it starts over with whatever is on this branch
 now. Merge a scene, and it is on air in the next run, with your name on screen.
 
 Nobody approves the story. The audience does: open a pull request, get enough
 approving reviews, and it merges on its own.
+
+## Running on Reactor
+
+Every frame on air is generated the moment you see it. The projector hands each
+scene's prompt and seed to [Reactor](https://reactor.inc), a platform for
+real-time video and world models, and the `fast-h3` model streams the picture
+back as it renders — there is no render farm, no pre-made clips, and no editor
+between your pull request and the screen. Same seed, same clip, every screening.
+Reactor sponsors the show and keeps the projector on air.
 
 ## Write a scene
 

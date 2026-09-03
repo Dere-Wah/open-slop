@@ -68,8 +68,11 @@ The projector (on the `code` branch) does this, in a loop, forever:
    the first screening snapshotted after the merge — never in the middle of the
    film.
 
-If the projector loses the video model mid-screening, the stream shows downtime
-and the same screening restarts from the top when the model is back.
+When the projector starts, or comes back after losing the video model, nothing
+plays until about half a minute of the opening is built; the viewer shows a
+pre-show with the programme meanwhile. If the model is lost mid-screening, the
+stream shows downtime and the same screening restarts from the top once the
+model is back and that buffer is rebuilt.
 
 Because the film is re-read every loop, there is nothing to deploy. Merging is
 publishing.
