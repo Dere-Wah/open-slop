@@ -61,6 +61,7 @@ export function ShowPage({
 }) {
   const [panel, setPanel] = useState<Panel>("rundown");
   const onAir = !offAir && showState?.status === "live";
+  const betweenScreenings = !offAir && showState?.status === "intermission";
   const repo = useMemo(() => repoOf(rundown?.story_url), [rundown?.story_url]);
 
   const tabs: { id: Panel; label: string; icon: ReactNode; count?: number }[] = [
@@ -125,7 +126,7 @@ export function ShowPage({
             rundown={rundown}
             state={showState}
             repo={repo}
-            nextScreeningAt={onAir ? endsAtLocal : null}
+            nextScreeningAt={onAir || betweenScreenings ? endsAtLocal : null}
           />
         </div>
 
@@ -153,13 +154,13 @@ export function ShowPage({
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-fg-muted sm:px-6">
           <span>OpenSlop · the first ever open source movie. Screenplay CC BY-SA 4.0, code Apache-2.0.</span>
           <span className="flex flex-wrap gap-4">
-            <a href={repoUrl(repo)} target="_blank" rel="noreferrer" className="hover:text-accent">
+            <a href={repoUrl(repo)} target="_blank" rel="noreferrer" className="">
               GitHub
             </a>
-            <a href="https://reactor.inc" target="_blank" rel="noreferrer" className="hover:text-accent">
+            <a href="https://reactor.inc" target="_blank" rel="noreferrer" className="">
               Rendered on Reactor
             </a>
-            <a href="https://livekit.io" target="_blank" rel="noreferrer" className="hover:text-accent">
+            <a href="https://livekit.io" target="_blank" rel="noreferrer" className="">
               Streamed with LiveKit
             </a>
           </span>

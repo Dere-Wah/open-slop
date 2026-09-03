@@ -13,7 +13,7 @@ build may not be ready the instant the last clip ends — after a short grace, s
 the seamless handover between two chained clips, where `clip_finished` and the
 next `clip_started` arrive milliseconds apart, never flickers.
 
-The cursor has four statuses. `live` is a scene on air. `warming` is the time
+The cursor has five statuses. `live` is a scene on air. `warming` is the time
 before the model has answered, or while the story cannot be read; the packet
 carries a `detail` line saying which. `loading` is the curtain: the model is
 connected and building the screening's opening clips, and nothing plays until
@@ -21,8 +21,11 @@ enough film is buffered that playout cannot outrun the builds; the packet
 carries how much is built against the target so the viewer can draw it.
 `downtime` is the model's session having been lost: everything queued died
 with it, and the screening that was on air will play again from the top once
-the model is back — through `loading` again. The viewer shows each as what it
-is rather than a frozen countdown.
+the model is back — through `loading` again. `intermission` is the loop point:
+a screening's last clip has ended and the stream is held for a fixed pause
+before the next screening's first frame; the packet says which screening ended,
+when the next one resumes, and how much of its opening is built. The viewer
+shows each as what it is rather than a frozen countdown.
 
 The **rundown** — every scene, its length, and everyone who wrote it — is large
 and changes once a screening, so it goes into LiveKit room metadata. Room
@@ -79,6 +82,23 @@ class Cursor:
     scene_offset: float  # seconds of film before this scene, this screening
     screening_total: float
     next_sha: str | None = None  # the sha the next screening was snapshotted at, if known
+    intermission_seconds: float = 0.0  # the pause between this screening's end and the next
+
+
+@dataclass
+class Intermission:
+    """The loop point: one screening has ended, the next starts after a pause."""
+
+    ended_screening: int
+    resumes_at: float  # epoch seconds when the next screening's first frame is due
+    hold_seconds: float  # the whole pause, for drawing its progress
+    screening: int | None  # the next screening, once snapshotted
+    sha: str | None
+    episode_title: str  # what the next screening opens on
+    buffered_seconds: float  # of the next screening's opening, built so far
+    target_seconds: float
+    film_seconds: float
+    scene_total: int
 
 
 @dataclass
@@ -102,7 +122,8 @@ class Broadcast:
         self._pub = publisher
         self._cursor: Cursor | None = None
         self._loading: Loading | None = None
-        self._status = "warming"  # warming | loading | downtime | live
+        self._intermission: Intermission | None = None
+        self._status = "warming"  # warming | loading | intermission | downtime | live
         self._notice: str | None = None
         self._stall_since: float | None = None
         self._pending: tuple[int, Rundown] | None = None
@@ -114,6 +135,7 @@ class Broadcast:
         """Anchor the countdown to a freshly started clip."""
         self._cursor = cursor
         self._loading = None
+        self._intermission = None
         self._status = "live"
         self._notice = None
         self._stall_since = None
@@ -127,7 +149,17 @@ class Broadcast:
         """The curtain is down: the opening is being built; say how far along."""
         self._cursor = None
         self._loading = loading
+        self._intermission = None
         self._status = "loading"
+        self._notice = None
+        self._stall_since = None
+
+    def mark_intermission(self, intermission: Intermission) -> None:
+        """A screening has ended; the next starts after the pause."""
+        self._cursor = None
+        self._loading = None
+        self._intermission = intermission
+        self._status = "intermission"
         self._notice = None
         self._stall_since = None
 
@@ -135,6 +167,7 @@ class Broadcast:
         """The model's session is gone; the screening will restart from the top."""
         self._cursor = None
         self._loading = None
+        self._intermission = None
         self._status = "downtime"
         self._notice = None
         self._stall_since = None
@@ -181,6 +214,29 @@ class Broadcast:
             }
             self._pub.publish_state(packet)
             return
+        intermission = self._intermission
+        if self._status == "intermission" and intermission is not None:
+            packet = {
+                "v": 1,
+                "topic": "state",
+                "status": "intermission",
+                "ended_screening": intermission.ended_screening,
+                "resumes_at": _ms(intermission.resumes_at),
+                "hold_seconds": round(intermission.hold_seconds, 3),
+                "buffered_seconds": round(intermission.buffered_seconds, 3),
+                "target_seconds": round(intermission.target_seconds, 3),
+                "film_seconds": round(intermission.film_seconds, 3),
+                "scene_total": intermission.scene_total,
+                "episode_title": intermission.episode_title,
+                # A floor only while the next opening is still being built.
+                "stalled": intermission.buffered_seconds + 1e-6 < intermission.target_seconds,
+                "now": _ms(now),
+            }
+            if intermission.screening is not None:
+                packet["screening"] = intermission.screening
+                packet["sha"] = intermission.sha
+            self._pub.publish_state(packet)
+            return
         if cursor is None or self._status != "live":
             packet = {
                 "v": 1,
@@ -221,6 +277,7 @@ class Broadcast:
             "commit_url": cursor.commit_url,
             "now": _ms(now),
             "ends_at": _ms(ends_at),
+            "next_start_at": _ms(ends_at + cursor.intermission_seconds),
             "stalled": stalled,
             "progress": round(progress, 4),
         }

@@ -13,7 +13,8 @@ import type { RundownScene, ShowState } from "@/lib/types";
  * footer, not this bar's — a ticking countdown here read as a deadline.
  *
  * While the curtain is down the same bar says what is being waited for — the
- * buffer filling, the projector reconnecting, or nothing at all.
+ * buffer filling, the pause between two screenings, the projector
+ * reconnecting, or nothing at all.
  */
 export function NowPlaying({
   state,
@@ -71,6 +72,33 @@ export function NowPlaying({
     );
   }
 
+  if (state.status === "intermission") {
+    const left =
+      state.resumes_at && state.hold_seconds
+        ? Math.max(0, Math.ceil((state.resumes_at - state.now) / 1000))
+        : null;
+    const ratio =
+      left !== null && state.hold_seconds ? Math.min(1, 1 - left / state.hold_seconds) : 0;
+    return (
+      <Bar tone="accent">
+        <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-accent" />
+        <span className="min-w-0 flex-1 text-fg-muted">
+          <strong className="font-semibold text-fg">
+            Intermission.
+          </strong>{" "}
+          {typeof state.ended_screening === "number" && (
+            <>Screening nº {state.ended_screening} has ended; </>
+          )}
+          {typeof state.screening === "number" ? <>nº {state.screening}</> : <>the next one</>}{" "}
+          starts over from the top{left !== null && <> in <span className="text-fg">{left}s</span></>}.
+        </span>
+        <span className="gh-progress hidden w-40 sm:block" aria-hidden="true">
+          <span className="bg-accent" style={{ width: `${ratio * 100}%` }} />
+        </span>
+      </Bar>
+    );
+  }
+
   if (state.status !== "live") {
     return (
       <Bar tone="muted">
@@ -91,7 +119,7 @@ export function NowPlaying({
   return (
     <Bar tone="default">
       <Avatar name={author} url={state.author_url} size={20} />
-      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 leading-5">
         {authorUrl ? (
           <a href={authorUrl} target="_blank" rel="noreferrer" className="font-semibold text-fg">
             {author}
@@ -112,10 +140,10 @@ export function NowPlaying({
           </span>
         </span>
         {state.commit && (
-          <span className="inline-flex items-center gap-1 font-mono text-xs text-fg-muted">
-            <GitCommitIcon size={14} />
+          <span className="inline-flex items-center gap-1 font-mono text-xs leading-5 text-fg-muted">
+            <GitCommitIcon size={14} className="shrink-0" />
             {commitUrl ? (
-              <a href={commitUrl} target="_blank" rel="noreferrer" className="hover:text-accent">
+              <a href={commitUrl} target="_blank" rel="noreferrer" className="">
                 {state.commit}
               </a>
             ) : (

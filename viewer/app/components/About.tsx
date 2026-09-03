@@ -60,19 +60,19 @@ export function About({
           </li>
           <li className="flex items-center gap-2">
             <BookIcon className="shrink-0 text-fg-muted" />
-            <a href={readmeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted hover:text-accent">
+            <a href={readmeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted">
               README · how to write a scene
             </a>
           </li>
           <li className="flex items-center gap-2">
             <GitPullRequestIcon className="shrink-0 text-fg-muted" />
-            <a href={pullsUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted hover:text-accent">
+            <a href={pullsUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted">
               Pull requests · scenes waiting for votes
             </a>
           </li>
           <li className="flex items-center gap-2">
             <LawIcon className="shrink-0 text-fg-muted" />
-            <a href={treeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted hover:text-accent">
+            <a href={treeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted">
               CC BY-SA 4.0 (the movie)
             </a>
           </li>
@@ -82,7 +82,7 @@ export function About({
               href={`${repoUrl(repo)}/tree/code`}
               target="_blank"
               rel="noreferrer"
-              className="text-fg-muted hover:text-accent"
+              className="text-fg-muted"
             >
               Apache-2.0 (the projector and this page)
             </a>
@@ -118,7 +118,7 @@ export function About({
                 href={commitsUrl(repo)}
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold text-fg hover:text-accent"
+                className="font-semibold text-fg"
               >
                 story at <span className="font-mono">{rundown.sha}</span>
               </a>
@@ -151,7 +151,7 @@ export function About({
         >
           <ReactorMark size={32} className="shrink-0 rounded-full ring-1 ring-line" />
           <span>
-            <span className="block font-semibold text-fg group-hover:text-accent group-hover:underline">
+            <span className="block font-semibold text-fg group-hover:underline">
               Reactor
             </span>
             <span className="block text-xs text-fg-muted">renders every scene, live</span>

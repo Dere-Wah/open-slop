@@ -40,6 +40,16 @@ cold start used to show. While the curtain is down the broadcast reports
 wait as a pre-show rather than a black frame. The curtain comes down again on
 every new session, which is what makes a restart after downtime clean.
 
+The loop point is a stop, not a splice. When a screening's last scene starts
+playing, the projectionist turns autoplay off, so the model holds the next
+reel's built clips rather than starting them the instant the last frame is
+out. From the moment that clip ends the broadcast reports `intermission` for
+`INTERMISSION_SECONDS`, the viewer draws the pause as the end of one screening
+and the count into the next, and only then — with the next reel's opening
+already built during the pre-roll — autoplay goes back on and the new
+screening starts from its first frame. Viewers see the film end and start over
+instead of two screenings running into each other.
+
 The projectionist also narrates. It reads its own metadata echo back off each
 `clip_started`, finds the reel and the scene, and hands the broadcaster a
 cursor: which scene is on air, who wrote it, how long until the film loops, and
@@ -55,7 +65,7 @@ import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 
-from broadcast import Broadcast, Cursor, Loading
+from broadcast import Broadcast, Cursor, Intermission, Loading
 from reactor_link import SESSION_LOST, SESSION_READY, ReactorLink
 from story import Rundown, Scene, StorySource
 
@@ -77,6 +87,12 @@ CURTAIN_SECONDS = 30.0
 # If the buffer cannot reach the target (refusals, a slow model) but something
 # is built, raise the curtain anyway after this long rather than hold forever.
 CURTAIN_MAX_WAIT_S = 180.0
+
+# The intermission: how long the stream holds between one screening's last
+# frame and the next one's first. The next reel is already built during the
+# pre-roll, so this is a deliberate pause, not a wait for the model; it is what
+# makes the loop read as an ending and a fresh start rather than a splice.
+INTERMISSION_SECONDS = 20.0
 
 # Headroom kept under the model's own caps, so a built clip always has
 # somewhere to land and builds never pause on a full playout queue.
@@ -161,6 +177,15 @@ class Screening:
         # Whether the screening behind the curtain was on air before and is
         # starting over (a restart after downtime), for the viewer's wording.
         self._restarting = False
+        # The loop point. `_hold_for` is the screening whose last clip has
+        # started, so autoplay must go off before it ends; `_held` is the
+        # screening it went off for; `_intermission_since` is when that
+        # screening's last clip ended and the pause began.
+        self._hold_for: int | None = None
+        self._held: int | None = None
+        self._intermission_since: float | None = None
+        self._wake = asyncio.Event()
+        self._loop: asyncio.AbstractEventLoop | None = None
         link.add_listener(self._on_model_message)
 
     # ------------------------------------------------------------------ reels
@@ -264,21 +289,110 @@ class Screening:
 
     async def run(self) -> None:
         """Keep the queue fed, reel after reel, forever."""
+        self._loop = asyncio.get_running_loop()
         await self._link.wait_first_state()
         while True:
             if not self._link.connected:
-                await asyncio.sleep(1.0)
+                await self._nap(1.0)
                 continue
+            await self._tend_hold()
             await self._tend_curtain()
             if not self._room_for_more():
-                await asyncio.sleep(_POLL_S)
+                await self._nap(_POLL_S)
                 continue
             reel = await self._feeding_reel()
             if reel is None:
-                await asyncio.sleep(_POLL_S)
+                await self._nap(_POLL_S)
                 continue
             scene = reel.scenes[reel.next_to_enqueue]
             await self._enqueue(reel, scene)
+
+    async def _nap(self, seconds: float) -> None:
+        """Sleep, but wake early when a model event needs the loop's attention."""
+        try:
+            await asyncio.wait_for(self._wake.wait(), timeout=seconds)
+        except asyncio.TimeoutError:
+            pass
+        self._wake.clear()
+
+    def _poke(self) -> None:
+        """Wake the feed loop from a listener, whichever thread delivers it."""
+        loop = self._loop
+        if loop is not None:
+            loop.call_soon_threadsafe(self._wake.set)
+
+    # -------------------------------------------------------- the loop point
+
+    async def _tend_hold(self) -> None:
+        """Turn autoplay off while a screening's last clip plays, so its end is a stop."""
+        screening_id = self._hold_for
+        if screening_id is None:
+            return
+        self._hold_for = None
+        reel = self._reels.get(screening_id)
+        if reel is None or reel.done or self.curtain_down:
+            return  # the clip is already over, or nothing is playing anyway
+        serial = self._link.session_serial
+        if not await self._link.set_autoplay(False):
+            logger.warning(
+                "[screening] could not hold the stream at the end of screening %d; "
+                "the next one follows at once",
+                screening_id,
+            )
+            return
+        if serial != self._link.session_serial:
+            return  # the session turned over; the new one buffers behind the curtain
+        later_started = any(
+            r.started for r in self._reels.values() if r.screening_id > screening_id
+        )
+        if later_started:
+            # The last clip ended and the next screening began while the
+            # command was in flight; the hold must not stall that screening.
+            await self._link.set_autoplay(True)
+            return
+        self._held = screening_id
+        logger.info("[screening] holding the stream at the end of screening %d", screening_id)
+        if reel.done:
+            self._begin_intermission()
+
+    def _begin_intermission(self) -> None:
+        """The held screening's last clip has ended: lower the curtain for the pause."""
+        self._intermission_since = time.time()
+        self._autoplay_serial = -1
+        self._curtain_since = None
+        self._restarting = False
+        logger.info(
+            "[screening] screening %d has ended; intermission for %.0fs",
+            self._held,
+            INTERMISSION_SECONDS,
+        )
+        following = self._next_reel_after(self._held or 0)
+        if following is not None:
+            # Nothing is on air now, so the room's rundown can describe the
+            # screening about to start, and the curtain can show its programme.
+            self._broadcast.set_rundown(following.screening_id, following.rundown)
+        self._publish_intermission()
+        self._poke()
+
+    def _publish_intermission(self) -> None:
+        held = self._held
+        if held is None or self._intermission_since is None:
+            return
+        following = self._next_reel_after(held)
+        self._broadcast.mark_intermission(
+            Intermission(
+                ended_screening=held,
+                resumes_at=self._intermission_since + INTERMISSION_SECONDS,
+                hold_seconds=INTERMISSION_SECONDS,
+                screening=following.screening_id if following else None,
+                sha=following.rundown.sha if following else None,
+                episode_title=_opening_title(following) if following else "",
+                buffered_seconds=self._link.built_seconds,
+                target_seconds=self._curtain_target(following) if following else 0.0,
+                film_seconds=sum(s.seconds for s in following.scenes) if following else 0.0,
+                scene_total=len(following.scenes) if following else 0,
+            )
+        )
 
     # ----------------------------------------------------------- the curtain
 
@@ -301,8 +415,13 @@ class Screening:
         """While buffering, report progress; once enough is built, start playout."""
         if not self.curtain_down:
             return
-        reel = self._on_air_reel()
+        if self._held is not None and self._intermission_since is None:
+            return  # the held screening's last clip is still on air
+        intermission = self._intermission_since is not None
+        reel = self._next_reel_after(self._held) if intermission else self._on_air_reel()
         if reel is None:
+            if intermission:
+                self._publish_intermission()
             # No reel yet (the story is unreadable); the notice says so.
             return
         now = time.time()
@@ -316,18 +435,23 @@ class Screening:
             and self._link.playout_queued > 0
         )
         overdue = built > 0 and now - self._curtain_since > CURTAIN_MAX_WAIT_S
-        self._broadcast.mark_loading(
-            Loading(
-                screening=reel.screening_id,
-                sha=reel.rundown.sha,
-                episode_title=_opening_title(reel),
-                buffered_seconds=built,
-                target_seconds=target,
-                film_seconds=sum(scene.seconds for scene in reel.scenes),
-                scene_total=len(reel.scenes),
-                restart=self._restarting,
+        if intermission:
+            self._publish_intermission()
+            if now - self._intermission_since < INTERMISSION_SECONDS:
+                return
+        else:
+            self._broadcast.mark_loading(
+                Loading(
+                    screening=reel.screening_id,
+                    sha=reel.rundown.sha,
+                    episode_title=_opening_title(reel),
+                    buffered_seconds=built,
+                    target_seconds=target,
+                    film_seconds=sum(scene.seconds for scene in reel.scenes),
+                    scene_total=len(reel.scenes),
+                    restart=self._restarting,
+                )
             )
-        )
         if built + 1e-6 < target and not all_built and not overdue:
             return
         serial = self._link.session_serial
@@ -338,6 +462,8 @@ class Screening:
             return  # the session turned over mid-command; the next one buffers again
         self._autoplay_serial = serial
         self._curtain_since = None
+        self._held = None
+        self._intermission_since = None
         logger.info(
             "[screening] curtain up for screening %d: %.1fs built of a %.1fs target%s",
             reel.screening_id,
@@ -516,6 +642,7 @@ class Screening:
             # seamless handover never flickers.
             self._broadcast.mark_stalled()
             self._prune_reels()
+            self._on_maybe_ended(reel, global_index)
         elif kind == "clip_failed":
             logger.error(
                 "[screening] render failed for %s scene %s/%s: %s",
@@ -529,12 +656,23 @@ class Screening:
                 reel.finished.add(global_index)
             if clip.get("clip_id") == self._last_clip_id:
                 self._last_clip_id = None
+            self._on_maybe_ended(reel, global_index)
+
+    def _on_maybe_ended(self, reel: Reel | None, global_index: int) -> None:
+        """A clip is over; if it was the held screening's last, the pause begins."""
+        if reel is None or self._held != reel.screening_id:
+            return
+        if global_index == len(reel.scenes) - 1 and self._intermission_since is None:
+            self._begin_intermission()
 
     def _on_session_lost(self) -> None:
         """The model's queues are gone: restart the screening that was on air."""
         self._last_clip_id = None
         self._recent_seconds.clear()
         self._curtain_since = None
+        self._hold_for = None
+        self._held = None
+        self._intermission_since = None
         reel = self._on_air_reel()
         if reel is None:
             self._broadcast.mark_downtime()
@@ -552,8 +690,19 @@ class Screening:
     def _on_started(self, tag: dict, clip: dict, reel: Reel | None, global_index: int) -> None:
         screening_id = int(tag.get("screening") or 0)
         self._restarting = False
+        if self._held is not None and screening_id != self._held:
+            # A clip of the next screening is playing, so autoplay is on
+            # whatever this side believed; forget the hold.
+            self._held = None
+            self._intermission_since = None
+            self._autoplay_serial = self._link.session_serial
         if reel is not None:
             reel.started.add(global_index)
+            if global_index == len(reel.scenes) - 1:
+                # The screening's last scene is on air: hold the stream when
+                # it ends rather than run straight into the next reel.
+                self._hold_for = reel.screening_id
+                self._poke()
             if not reel.on_air:
                 reel.on_air = True
                 self._broadcast.set_rundown(reel.screening_id, reel.rundown)
@@ -597,6 +746,7 @@ class Screening:
             scene_offset=offset,
             screening_total=screening_total,
             next_sha=following.rundown.sha if following is not None else None,
+            intermission_seconds=INTERMISSION_SECONDS,
         )
         logger.info(
             "[now playing] s%d %s scene %d/%d by %s",

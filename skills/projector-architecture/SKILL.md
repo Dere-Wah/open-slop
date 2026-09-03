@@ -1,6 +1,6 @@
 ---
 name: projector-architecture
-description: How the OpenSlop projector turns the story branch into a 24/7 broadcast — the reel snapshot, the bounded pre-roll against the model's short queue, the curtain that buffers before the first frame, chaining and refusals, the restart-on-disconnect rule, and the two payloads the viewer receives. Read before changing anything under projector/.
+description: How the OpenSlop projector turns the story branch into a 24/7 broadcast — the reel snapshot, the bounded pre-roll against the model's short queue, the curtain that buffers before the first frame, the intermission at the loop point, chaining and refusals, the restart-on-disconnect rule, and the two payloads the viewer receives. Read before changing anything under projector/.
 ---
 
 # The projector
@@ -22,9 +22,9 @@ story.py ──▶ screening.py ──▶ reactor_link.py ──▶ (model) ─�
 | --- | --- |
 | `story.py` | A blobless mirror of the story branch. Parses the film with `story-tools/validate.py`, credits each scene by `git blame` over its prompt lines, collects `Co-authored-by` trailers. Every git call has a timeout. |
 | `logins.py` | Commit sha → GitHub login via `GET /repos/{owner}/{repo}/commits/{sha}`, only when the story URL is on github.com. A noreply email already carries the login; this covers the real-address commits. Cache is `<mirror>-logins.json` (hits kept for good, misses retried after a day). Anonymous budget is 60/h, `GITHUB_TOKEN` gives 5000; on a limit or network error it stops asking for the rest of the reading and credits by name. |
-| `screening.py` | The queue's only writer. Snapshots the film into a `Reel`, keeps the model fed, holds the curtain until enough is built, tags each clip, turns model events into broadcast state. |
+| `screening.py` | The queue's only writer. Snapshots the film into a `Reel`, keeps the model fed, holds the curtain until enough is built, pauses between screenings, tags each clip, turns model events into broadcast state. |
 | `reactor_link.py` | The one model session: connects, reconnects, sends commands, fans out model messages plus two synthetic events, `session_ready` and `session_lost`. Exposes `built_seconds` and `set_autoplay()`. |
-| `broadcast.py` | What the viewer sees: the cursor, the status (`warming`, `loading`, `downtime`, `live`), and the rundown, cut to fit LiveKit's metadata cap. |
+| `broadcast.py` | What the viewer sees: the cursor, the status (`warming`, `loading`, `intermission`, `downtime`, `live`), and the rundown, cut to fit LiveKit's metadata cap. |
 | `pacer.py`, `publisher.py` | The media path from the Reactor livestream example, unchanged in spirit. |
 | `main.py` | Wires the above and runs them. |
 
@@ -124,6 +124,41 @@ turns it on at connect). Built clips therefore wait in the playout queue, and
 (`playout_capacity - _PLAY_HEADROOM` clips), or the target is unreachable;
 `_curtain_target()` clamps to that, but keep the constant sane.
 
+## The intermission: the loop point is a stop
+
+The pre-roll means the next screening's opening is already built while the
+current one is still playing. Left alone, autoplay would start it the instant
+the last frame is out, and two screenings would run into each other. Instead:
+
+- On the `clip_started` of a reel's **last** scene, `_on_started()` sets
+  `_hold_for` and pokes the feed loop (`_poke()` — listeners may run off the
+  loop's thread, so they never send commands themselves). `_tend_hold()` then
+  sends `set_autoplay(false)`. The model finishes the clip and, with autoplay
+  off, holds the next reel's built clips instead of starting them. If the
+  command is refused, the next screening simply follows at once, and the log
+  says so.
+- When that last clip's `clip_finished` (or `clip_stopped`/`clip_failed`)
+  arrives, `_begin_intermission()` lowers the curtain (`_autoplay_serial =
+  -1`), records `_intermission_since`, and publishes the next reel's rundown
+  to the room — nothing is on air, so the curtain may show the programme
+  about to start.
+- `_tend_curtain()` now publishes `Intermission` through
+  `broadcast.mark_intermission()` every pass: `ended_screening`, `resumes_at`
+  (`since + INTERMISSION_SECONDS`), `hold_seconds`, and the next reel's
+  `screening`, `sha`, `episode_title`, and buffer fields. It raises the curtain
+  only once the pause has run **and** the usual buffer gate holds — in
+  practice the pre-roll has long since built the opening, so the pause is the
+  whole wait.
+- The live packet carries `next_start_at = ends_at + INTERMISSION_SECONDS`, so
+  the rundown's "next screening at" line includes the pause.
+- A `clip_started` from a later screening while a hold is believed active
+  means autoplay is on whatever this side thought; the hold is forgotten. A
+  lost session clears `_hold_for`, `_held`, and `_intermission_since` — the
+  new session buffers behind the curtain as usual.
+
+`INTERMISSION_SECONDS` is a deliberate pause, not a wait for the model; make
+it long enough to read as an ending and short enough not to read as a stall.
+
 ## Losing the model
 
 A Reactor session can drop and come back. The rule, chosen on purpose: **show
@@ -152,8 +187,9 @@ Two payloads, both owned by `broadcast.py`:
   `stalled`, and — when a later reel is already snapshotted — `next_sha`, so
   the countdown can say which story version comes up. Between clips the stall
   flag waits `_STALL_GRACE_S` before showing, so a seamless `continue` does not
-  flicker an intermission. While `loading` the packet carries the buffer
-  fields listed under the curtain instead of a cursor.
+  flicker a stall. While `loading` the packet carries the buffer fields
+  listed under the curtain instead of a cursor; while `intermission` it
+  carries the fields listed under the intermission.
 - **The rundown**, written into room metadata when a reel's **first** clip
   starts — or at snapshot when nothing is on air, so the curtain can show the
   programme (the viewer must never see a pre-rolled film described as the one
@@ -193,4 +229,5 @@ is not requested before the target and is requested once at it, fire
 `clip_started`/`clip_finished`, drop the session, and assert the reel rewinds,
 the curtain comes back down with `restart: true`, and the rundown is published
 once. Keep the queue's single-writer rule: nothing but `screening.py` sends
-`enqueue`, and nothing but `_tend_curtain()` sends `set_autoplay`.
+`enqueue`, and nothing but `_tend_curtain()` and `_tend_hold()` send
+`set_autoplay`.

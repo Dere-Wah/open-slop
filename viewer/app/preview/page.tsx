@@ -3,7 +3,7 @@ import { PreviewApp } from "./PreviewApp";
 
 /**
  * A fixture-driven copy of the page for working on the design without a
- * projector: `/preview?state=live|loading|downtime|warming|offair&episodes=120&chat=80`.
+ * projector: `/preview?state=live|loading|intermission|downtime|warming|offair&episodes=120&chat=80`.
  * Development only — in a production build it does not exist.
  */
 export const dynamic = "force-dynamic";

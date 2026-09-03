@@ -107,6 +107,14 @@ export function PreviewApp({
           buffered_seconds: 12.25, target_seconds: 30, film_seconds: rundown.total_seconds,
           scene_total: rundown.episodes.reduce((n, e) => n + e.scenes.length, 0), restart: false, now,
         };
+      case "intermission":
+        return {
+          v: 1, topic: "state", status: "intermission", ended_screening: 12, screening: 13,
+          sha: "a1b2c3d", episode_title: rundown.episodes[0].title ?? undefined,
+          resumes_at: now + 14_000, hold_seconds: 20, buffered_seconds: 30, target_seconds: 30,
+          film_seconds: rundown.total_seconds,
+          scene_total: rundown.episodes.reduce((n, e) => n + e.scenes.length, 0), now,
+        };
       case "downtime":
         return { v: 1, topic: "state", status: "downtime", screening: 12, sha: "d5b84a2", now };
       case "warming":
@@ -121,7 +129,8 @@ export function PreviewApp({
           scene_number: currentScene.n, scene_count: current.scenes.length,
           author: currentScene.author, author_url: currentScene.author_url,
           commit: currentScene.commit, commit_url: currentScene.commit_url,
-          now, ends_at: now + 4 * 60_000 + 12_000, stalled: false, progress: 0.37,
+          now, ends_at: now + 4 * 60_000 + 12_000, next_start_at: now + 4 * 60_000 + 32_000,
+          stalled: false, progress: 0.37,
         };
     }
   })();
@@ -132,7 +141,7 @@ export function PreviewApp({
       showState={showState}
       rundown={state === "warming" ? null : rundown}
       currentScene={state === "live" ? currentScene : null}
-      endsAtLocal={showState?.ends_at ?? null}
+      endsAtLocal={showState?.next_start_at ?? showState?.ends_at ?? showState?.resumes_at ?? null}
       offAir={state === "offair"}
       videoTrack={null}
       audioTrack={null}

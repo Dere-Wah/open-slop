@@ -241,7 +241,7 @@ function renderText(text: string, repo: RepoRef): ReactNode {
         target="_blank"
         rel="noreferrer"
         title={`Pull request #${pull.number} on ${repo.owner}/${repo.repo}`}
-        className="mx-0.5 inline-flex items-center gap-1 rounded-full border border-line bg-canvas-overlay px-2 py-0.5 align-[-3px] font-mono text-xs text-fg hover:border-accent hover:text-accent hover:no-underline"
+        className="mx-0.5 inline-flex items-center gap-1 rounded-full border border-line bg-canvas-overlay px-2 py-0.5 align-[-3px] font-mono text-xs text-fg hover:border-accent hover:no-underline"
       >
         <GitPullRequestIcon size={12} className="text-success" />#{pull.number}
       </a>,

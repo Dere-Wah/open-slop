@@ -11,8 +11,10 @@
 // `warming`: the projector is up but the model has not answered, or the story
 // cannot be read. `loading`: the curtain — the model is building the opening
 // and nothing plays until enough film is buffered. `downtime`: the model was
-// lost; the screening restarts from the top (through `loading`). `live`: on air.
-export type ShowStatus = "warming" | "loading" | "downtime" | "live";
+// lost; the screening restarts from the top (through `loading`). `intermission`:
+// the loop point — a screening has ended and the stream is held for a pause
+// before the next one starts. `live`: on air.
+export type ShowStatus = "warming" | "loading" | "intermission" | "downtime" | "live";
 
 export interface ShowState {
   v: number;
@@ -28,6 +30,11 @@ export interface ShowState {
   film_seconds?: number; // the whole screening's length
   scene_total?: number;
   restart?: boolean; // this screening was on air and is starting over
+  // While `intermission` (`screening`/`sha`/`episode_title` and the buffer
+  // fields then describe the screening about to start):
+  ended_screening?: number;
+  resumes_at?: number; // server epoch ms when the next screening's first frame is due
+  hold_seconds?: number; // the whole pause, for drawing its progress
   episode_index?: number;
   episodes_total?: number;
   episode_title?: string;
@@ -41,7 +48,8 @@ export interface ShowState {
   commit?: string;
   commit_url?: string | null;
   now: number; // server epoch ms, for clock-skew correction
-  ends_at?: number; // server epoch ms when this screening ends (the loop point)
+  ends_at?: number; // server epoch ms when this screening's last frame is out
+  next_start_at?: number; // … plus the intermission: when the next screening starts
   stalled?: boolean;
   progress?: number; // 0..1 across the screening
 }

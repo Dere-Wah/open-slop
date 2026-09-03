@@ -101,14 +101,16 @@ export function ShowApp() {
   const applyState = useCallback((state: ShowState) => {
     setShowState(state);
     setStateSeenAt(Date.now());
-    // Correct the server's end time into the viewer's own clock, so the
-    // countdown is right even when the two clocks disagree.
-    if (state.status === "live" && typeof state.ends_at === "number") {
-      const skew = Date.now() - state.now;
-      setEndsAtLocal(state.ends_at + skew);
-    } else {
-      setEndsAtLocal(null);
-    }
+    // Correct the server's time for the next screening into the viewer's own
+    // clock, so it is right even when the two clocks disagree.
+    const skew = Date.now() - state.now;
+    const nextStart =
+      state.status === "live"
+        ? (state.next_start_at ?? state.ends_at)
+        : state.status === "intermission"
+          ? state.resumes_at
+          : undefined;
+    setEndsAtLocal(typeof nextStart === "number" ? nextStart + skew : null);
   }, []);
 
   useEffect(() => {

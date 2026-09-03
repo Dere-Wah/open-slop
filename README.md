@@ -30,8 +30,11 @@ snapshot with that same lead. A fresh session opens behind a curtain: nothing
 plays until about thirty seconds of the opening are built, and the viewer
 draws that wait as a pre-show (title, programme, a leader ring counting the
 seconds still to build) rather than the model's first clip stuttering out
-ahead of the builds. If the model session drops, the stream shows downtime,
-buffers again, and the screening restarts from the top.
+ahead of the builds. When a screening's last scene ends, the stream holds for
+a short intermission — the viewer sees the screening end and counts down to the
+next — before the next one starts from its first frame. If the model session
+drops, the stream shows downtime, buffers again, and the screening restarts
+from the top.
 
 ## The two branches
 
@@ -53,7 +56,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `projector/` | The Python projector: reads the story, drives the model, publishes to LiveKit. |
 | `projector/story.py` | Mirrors the story branch and credits each scene by `git blame` (plus `Co-authored-by`). |
 | `projector/logins.py` | Turns a commit into its GitHub login through the commits API, cached beside the mirror, so credits show faces even when the commit email is not a noreply. `GITHUB_TOKEN` raises the rate limit. |
-| `projector/screening.py` | The queue's only writer: snapshots a screening into a reel, feeds and chains scenes, holds the curtain until the opening is built, restarts on a lost session. |
+| `projector/screening.py` | The queue's only writer: snapshots a screening into a reel, feeds and chains scenes, holds the curtain until the opening is built, pauses for an intermission at the loop point, restarts on a lost session. |
 | `projector/broadcast.py` | The 1 Hz cursor (`warming` / `loading` / `downtime` / `live`) and the per-screening rundown in room metadata. |
 | `projector/reactor_link.py` | The one model session, with `session_ready` / `session_lost` events. |
 | `projector/{pacer,publisher}.py` | The media path, unchanged from the Reactor example. |

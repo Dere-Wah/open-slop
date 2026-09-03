@@ -226,9 +226,7 @@ button:disabled {
     box-shadow: 0 0 0 1px var(--color-line);
   }
 
-  .gh-link {
-    color: var(--color-accent);
-  }
+  /* A link keeps the colour of its text; only the hover underline marks it. */
   .gh-link:hover {
     text-decoration: underline;
     text-underline-offset: 0.15em;

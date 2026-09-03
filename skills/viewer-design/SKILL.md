@@ -25,8 +25,10 @@ to Tailwind through `@theme`, and the recurring pieces (`.gh-btn`,
 `.gh-underline-nav`, `.gh-avatar`, `.gh-progress`) are one class each in
 `@layer components`, so a utility on the same element still wins.
 
-Every `<a>` underlines on hover, as on GitHub; the rule lives in `@layer
-base` in `globals.css`, so it applies without a class. A link that looks
+Every `<a>` keeps the colour of the text around it and underlines on hover,
+as on GitHub; the rule lives in `@layer base` in `globals.css`, so it applies
+without a class. No link turns blue, at rest or on hover: `.gh-link` sets no
+colour, and no anchor carries `hover:text-accent`. A link that looks
 like a button, tab, or chip opts out: `.gh-btn`, `.gh-topic`, and the
 underline nav do so in `@layer components`, and a one-off chip (the
 overlay badges, the PR chip in chat, avatar links) adds
@@ -54,8 +56,8 @@ on the Octicons grid.
 | `app/ShowPage.tsx` | The whole page from props. The grid, the mobile panel switch, the footer. From `lg` the right column is one `side` area holding an `<aside>` with chat above About; under `lg` the aside is `display: contents` so both take the single `panel` slot one at a time. |
 | `components/RepoHeader.tsx` | Owner / repo, `Public`, branch @ sha, the three buttons, the underline nav. A connection pill sits at the nav's right end only while the page is not connected; there is no global bar above it. |
 | `components/Player.tsx` | Video and audio elements, the progress line, mute and fullscreen, and the overlay slot. |
-| `components/Overlay.tsx` | The "On air" chip (a red dot and the two words), a viewer count beside it (an eye and a number, `1.3k` past a thousand), the "Running on Reactor" chip top-right, and the intermission ribbon, drawn over the picture while live. |
-| `components/Curtain.tsx` | The pre-show that covers the player whenever nothing is on air. |
+| `components/Overlay.tsx` | The "On air" chip (a red dot and the two words), a viewer count beside it (an eye and a number, `1.3k` past a thousand), the "Running on Reactor" chip top-right, and the stall ribbon, drawn over the picture while live. |
+| `components/Curtain.tsx` | The pre-show that covers the player whenever nothing is on air: while `loading` its ring fills with the buffer and counts the seconds still to build; while `intermission` it fills with the pause and counts down to the next screening. |
 | `components/NowPlaying.tsx` | The bar under the player, shaped like GitHub's latest-commit row: author, episode and scene, commit. Carries the loading, downtime, warming, and off-air lines too. No countdown — a ticking clock read as a deadline. |
 | `components/Rundown.tsx` | The episode table with its scenes, filter, paging, and jump-to-now-playing. Its last line is when the next screening starts, as a wall-clock time ("at about 19:24"; "no earlier than" while a scene holds). |
 | `components/About.tsx` | The sidebar: description, links, topics, licences, the screening, sponsors (Reactor, linking to reactor.inc), contributors. |
