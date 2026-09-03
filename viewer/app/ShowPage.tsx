@@ -45,6 +45,7 @@ export function ShowPage({
   audioTrack,
   chat,
   onSendChat,
+  viewers,
 }: {
   connection: Connection;
   showState: ShowState | null;
@@ -56,6 +57,7 @@ export function ShowPage({
   audioTrack: RemoteTrack | null;
   chat: ChatEntry[];
   onSendChat: (author: string, text: string) => boolean;
+  viewers: number | null; // people in the room besides the projector, us included
 }) {
   const [panel, setPanel] = useState<Panel>("rundown");
   const onAir = !offAir && showState?.status === "live";
@@ -80,7 +82,7 @@ export function ShowPage({
             progress={onAir ? showState?.progress : undefined}
             overlay={
               onAir ? (
-                <Overlay state={showState} />
+                <Overlay state={showState} viewers={viewers} />
               ) : connection === "live" ? (
                 <Curtain state={showState} rundown={rundown} offAir={offAir} />
               ) : null

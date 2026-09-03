@@ -78,6 +78,7 @@ export function ShowApp() {
   const [videoTrack, setVideoTrack] = useState<RemoteTrack | null>(null);
   const [audioTrack, setAudioTrack] = useState<RemoteTrack | null>(null);
   const [chat, setChat] = useState<ChatEntry[]>([]);
+  const [viewers, setViewers] = useState<number | null>(null);
   const [showState, setShowState] = useState<ShowState | null>(null);
   const [rundown, setRundown] = useState<RundownData | null>(null);
   const [endsAtLocal, setEndsAtLocal] = useState<number | null>(null);
@@ -126,6 +127,19 @@ export function ShowApp() {
 
           room = new Room({ adaptiveStream: true });
           roomRef.current = room;
+          // Everyone in the room but the streamer is a viewer, ourselves
+          // included. LiveKit tells us about joins and leaves; no polling.
+          const countViewers = () => {
+            const current = roomRef.current;
+            if (!current) return;
+            let count = 1;
+            current.remoteParticipants.forEach((participant) => {
+              if (participant.identity !== STREAMER_IDENTITY) count += 1;
+            });
+            setViewers(count);
+          };
+          room.on(RoomEvent.ParticipantConnected, countViewers);
+          room.on(RoomEvent.ParticipantDisconnected, countViewers);
           room.on(RoomEvent.TrackSubscribed, (track) => {
             if (track.kind === "video") setVideoTrack(track);
             if (track.kind === "audio") setAudioTrack(track);
@@ -162,11 +176,13 @@ export function ShowApp() {
             setStatus("offline");
             setVideoTrack(null);
             setAudioTrack(null);
+            setViewers(null);
             if (!disposed) setTimeout(() => void join(), RECONNECT_DELAY_MS);
           });
 
           await room.connect(url, token);
           setStatus("live");
+          countViewers();
           // Room metadata is delivered with the join, so the rundown is
           // available immediately without any request.
           const initial = parseMetadata(room.metadata);
@@ -226,6 +242,7 @@ export function ShowApp() {
       audioTrack={audioTrack}
       chat={chat}
       onSendChat={sendChat}
+      viewers={viewers}
     />
   );
 }

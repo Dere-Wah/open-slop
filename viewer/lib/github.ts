@@ -96,3 +96,32 @@ export function loginFromUrl(url: unknown): string | null {
 export function profileUrl(login: string): string {
   return `https://github.com/${encodeURIComponent(login)}`;
 }
+
+export interface PullRef {
+  number: number;
+  url: string; // canonical `https://github.com/<owner>/<repo>/pull/<n>`
+}
+
+/**
+ * Recognise a link to one of *this* repository's pull requests —
+ * `https://github.com/<owner>/<repo>/pull/<n>`, with any tab, fragment, or
+ * trailing punctuation a chat message drags along. Anything else, including a
+ * pull request on another repository, is null: chat chips only ever point
+ * home.
+ */
+export function pullRefOf(text: unknown, ref: RepoRef): PullRef | null {
+  if (typeof text !== "string") return null;
+  const url = safeHttpUrl(text.replace(/[).,;:!?'"\]]+$/, ""));
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "github.com" && parsed.hostname !== "www.github.com") return null;
+    const [owner, repo, kind, number] = parsed.pathname.split("/").filter(Boolean);
+    if (kind !== "pull" || !number || !/^[1-9][0-9]{0,8}$/.test(number)) return null;
+    if (owner?.toLowerCase() !== ref.owner.toLowerCase()) return null;
+    if (repo?.toLowerCase() !== ref.repo.toLowerCase()) return null;
+    return { number: Number(number), url: `${repoUrl(ref)}/pull/${number}` };
+  } catch {
+    return null;
+  }
+}

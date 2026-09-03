@@ -45,14 +45,14 @@ on the Octicons grid.
 | `app/ShowPage.tsx` | The whole page from props. The grid, the mobile panel switch, the footer. From `lg` the right column is one `side` area holding an `<aside>` with chat above About; under `lg` the aside is `display: contents` so both take the single `panel` slot one at a time. |
 | `components/RepoHeader.tsx` | Owner / repo, `Public`, branch @ sha, the three buttons, the underline nav. A connection pill sits at the nav's right end only while the page is not connected; there is no global bar above it. |
 | `components/Player.tsx` | Video and audio elements, the progress line, mute and fullscreen, and the overlay slot. |
-| `components/Overlay.tsx` | The "On air" chip (a red dot and the two words, nothing else) and the intermission ribbon, drawn over the picture while live. |
+| `components/Overlay.tsx` | The "On air" chip (a red dot and the two words), a viewer count beside it (an eye and a number, `1.3k` past a thousand), the "Running on Reactor" chip top-right, and the intermission ribbon, drawn over the picture while live. |
 | `components/Curtain.tsx` | The pre-show that covers the player whenever nothing is on air. |
 | `components/NowPlaying.tsx` | The bar under the player, shaped like GitHub's latest-commit row: author, episode and scene, commit. Carries the loading, downtime, warming, and off-air lines too. No countdown — a ticking clock read as a deadline. |
 | `components/Rundown.tsx` | The episode table with its scenes, filter, paging, and jump-to-now-playing. Its last line is when the next screening starts, as a wall-clock time ("at about 19:24"; "no earlier than" while a scene holds). |
 | `components/About.tsx` | The sidebar: description, links, topics, licences, the screening, sponsors (Reactor, linking to reactor.inc), contributors. |
-| `components/Chat.tsx` | The room chat, first in the sidebar. Fixed height from its `className`, scrolls inside, follows new messages only when the reader is at the bottom; a header toggle collapses it to one row (remembered in localStorage). |
+| `components/Chat.tsx` | The room chat, first in the sidebar. Fixed height from its `className`, scrolls inside, follows new messages only when the reader is at the bottom; a header toggle collapses it to one row (remembered in localStorage). No name field: the first send opens a small dialog asking for one, which then persists; "change" under the box reopens it. A link to one of this repository's pull requests renders as a chip (`#41` with the pull-request icon) through `pullRefOf`; every other URL stays plain text. |
 | `components/Avatar.tsx` | A GitHub avatar for a `@login` (or a profile URL), a lettered disc for anyone else. |
-| `lib/github.ts` | Everything derived from `story_url`: `owner/repo/branch`, every link out, avatar and profile URLs. |
+| `lib/github.ts` | Everything derived from `story_url`: `owner/repo/branch`, every link out, avatar and profile URLs, and `pullRefOf`, which recognises a link to this repository's pull requests and nothing else. |
 | `lib/safeUrl.ts` | The only way an `href` is rendered from wire data. |
 | `app/preview/` | A fixture-driven copy of the page for design work; development only. |
 
@@ -106,6 +106,12 @@ Check `/preview?state=live&episodes=120` after any change here.
   string into a URL.
 - Avatars are loaded only for logins that match GitHub's login grammar,
   with `referrerPolicy="no-referrer"`.
+- Chat never linkifies. The one exception is a pull request on this
+  repository, rebuilt from the parsed number as a canonical URL; a link to
+  any other host or repository is left as text, so the room cannot become a
+  link board.
+- The viewer count is the room's own participant list minus the `streamer`,
+  counted on join and on every join or leave event; nothing is polled.
 
 ## Working on it
 

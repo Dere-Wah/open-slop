@@ -58,7 +58,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `projector/reactor_link.py` | The one model session, with `session_ready` / `session_lost` events. |
 | `projector/{pacer,publisher}.py` | The media path, unchanged from the Reactor example. |
 | `story-tools/validate.py` | The one validator, shared by CI and the projector. |
-| `viewer/` | The Next.js viewer, laid out like a GitHub repository page: the player, the curtain (pre-show while nothing is on air), a now-playing bar, the rundown and credits (ending with when the next screening starts), an About panel, chat. No UI package; the tokens are in `viewer/app/globals.css`. |
+| `viewer/` | The Next.js viewer, laid out like a GitHub repository page: the player, the curtain (pre-show while nothing is on air), a now-playing bar, the rundown and credits (ending with when the next screening starts), an About panel, chat (a name is asked for on the first send; links to this repository's pull requests render as `#41` chips), and a viewer count over the picture from LiveKit's participant list. No UI package; the tokens are in `viewer/app/globals.css`. |
 | `skills/` | Guides for changing this branch: the projector, the format, the CI and vote, the viewer's design. |
 | `assets/how-to-approve.png` | The three-step screenshot strip the story bot embeds in its "Audience vote" comment. Served raw from this branch. |
 | `assets/screening.png` | The viewer on air, embedded at the top of the story branch's README. Retake it from a live screening when the page changes: a 1440-wide shot of the viewer, cropped above the Next.js dev badge. |

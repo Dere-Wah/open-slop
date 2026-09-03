@@ -137,6 +137,7 @@ export function PreviewApp({
       videoTrack={null}
       audioTrack={null}
       chat={chat}
+      viewers={chatCount > 3 ? 1284 : 37}
       onSendChat={(author, text) => {
         setChat((prev) => [...prev, { id: prev.length + 1, author, text }]);
         return true;
