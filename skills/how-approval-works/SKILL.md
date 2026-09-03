@@ -29,7 +29,7 @@ a grey check mark and does not count it itself. A bot does:
 - When the count reaches the quorum and the wait since the last push has
   passed, the bot marks the pull request approved and GitHub merges it.
 
-The bot keeps one tally comment up to date: `1/2 approvals`, then how long
+The bot keeps one tally comment up to date: `1/3 approvals`, then how long
 until it merges. Nobody presses a button. It re-checks on every comment, on
 every push, and on a sweep every few minutes — so an approval appears in the
 tally within a few minutes, or at once if anyone comments — and a pull request

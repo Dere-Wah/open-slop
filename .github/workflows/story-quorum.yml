@@ -63,7 +63,7 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const QUORUM = 2;
+            const QUORUM = 3;
             const COOLING_OFF_MINUTES = 5;
             const MIN_ACCOUNT_AGE_DAYS = 30;
             const BLOCK = /^\/block\b/i;
