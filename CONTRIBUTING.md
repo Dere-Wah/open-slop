@@ -54,8 +54,9 @@ Pushing a new commit clears the approvals, so finish editing before you ask.
 
 ## Or hand it to an agent
 
-This branch is written for coding agents too. Paste this into Cursor, Claude
-Code, Codex, or whatever you use:
+This branch is written for coding agents too. The agent button at the top of
+[openslop.live](https://openslop.live) opens Cursor, Codex, Claude Code, Copilot,
+or Warp with the prompt already typed. Or paste this yourself:
 
 > Clone `https://github.com/Dere-Wah/open-slop` and check out the `story`
 > branch. Read `AGENTS.md` and `skills/writing-a-scene/SKILL.md`. Then add a
