@@ -4,21 +4,25 @@
 # the vote is `/approve` comments from anyone, tallied here.
 #
 # It runs from the default branch (`story`): on every comment, on every push to
-# a pull request (so the tally resets and auto-merge is re-armed), and on an
-# hourly sweep so a pull request that has gone quiet still crosses its
-# cooling-off line and merges. It does not merge anything by hand: it sets the
+# a pull request (so the tally resets and auto-merge is re-armed), and on a
+# sweep every ten minutes so a pull request that has gone quiet still crosses
+# its waiting line and merges. It does not merge anything by hand: it sets the
 # status and keeps GitHub's auto-merge armed, and auto-merge fires once
 # story/validate and story/quorum are both green.
 #
 # THE VOTE ANCHOR — read before editing:
 #   A vote counts only if it was cast after the pull request's current head was
 #   pushed. The push time is NOT read from the commit: committer dates are set
-#   by whoever commits, and a backdated amend would carry three old approvals
-#   onto new content. It is read from the first commit status this repository's
+#   by whoever commits, and a backdated amend would carry old approvals onto
+#   new content. It is read from the first commit status this repository's
 #   bot posted on the head sha (story/validate or story/quorum), which GitHub
 #   timestamps server-side the moment the push triggered a run. Nothing a
-#   contributor writes can move it. The cooling-off window counts from the
-#   same anchor, so a placeholder opened early and filled in late still waits.
+#   contributor writes can move it. The waiting window counts from the same
+#   anchor, so a placeholder opened early and filled in late still waits.
+#
+# The numbers (QUORUM, COOLING_OFF_MINUTES, MIN_ACCOUNT_AGE_DAYS) live only
+# here. The docs describe the mechanism and point at the bot's comment for the
+# current values, so changing them is a one-line edit.
 name: story-quorum
 
 on:
@@ -28,7 +32,7 @@ on:
     types: [opened, reopened, synchronize]
     branches: [story]
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/10 * * * *"
 
 permissions:
   contents: write
@@ -50,8 +54,8 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const QUORUM = 3;
-            const COOLING_OFF_HOURS = 6;
+            const QUORUM = 2;
+            const COOLING_OFF_MINUTES = 5;
             const MIN_ACCOUNT_AGE_DAYS = 30;
             const APPROVE = /^\/approve\b/i;
             const UNAPPROVE = /^\/unapprove\b/i;
@@ -164,9 +168,9 @@ jobs:
               }
               const count = approvers.length;
 
-              const cooledAt = anchor + COOLING_OFF_HOURS * 3.6e6;
+              const cooledAt = anchor + COOLING_OFF_MINUTES * 60_000;
               const cooled = Date.now() >= cooledAt;
-              const hoursLeft = Math.max(1, Math.ceil((cooledAt - Date.now()) / 3.6e6));
+              const minutesLeft = Math.max(1, Math.ceil((cooledAt - Date.now()) / 60_000));
 
               let state, description;
               if (blocked) {
@@ -177,7 +181,7 @@ jobs:
                 description = `${count}/${QUORUM} approvals — canon`;
               } else if (count >= QUORUM) {
                 state = "pending";
-                description = `${count}/${QUORUM} approvals — cooling off ~${hoursLeft}h`;
+                description = `${count}/${QUORUM} approvals — merges in ~${minutesLeft} min`;
               } else {
                 state = "pending";
                 description = `${count}/${QUORUM} approvals`;
@@ -194,9 +198,9 @@ jobs:
                 blocked
                   ? "This pull request is **blocked by a maintainer** and will not merge until they `/unblock` it."
                   : count >= QUORUM && cooled
-                    ? "Quorum reached. It merges as soon as the format check is green."
+                    ? "Enough approvals. It merges as soon as the format check is green."
                     : count >= QUORUM
-                      ? `Quorum reached — merges after the cooling-off window (~${hoursLeft}h more).`
+                      ? `Enough approvals — merges in about ${minutesLeft} minute(s).`
                       : `Comment \`/approve\` to vote it in. Need ${QUORUM - count} more.`,
                 "",
                 approvers.length ? `Approved by: ${approvers.map((u) => "@" + u).join(", ")}` : "_No approvals yet._",
@@ -204,7 +208,7 @@ jobs:
                   ? `_Not counted (account younger than ${MIN_ACCOUNT_AGE_DAYS} days): ${tooNew.map((u) => "@" + u).join(", ")}_`
                   : null,
                 "",
-                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can \`/approve\`. A new push resets the vote and the ${COOLING_OFF_HOURS}h cooling-off. \`/unapprove\` to withdraw._`,
+                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can \`/approve\`. A new push resets the vote and the ${COOLING_OFF_MINUTES}-minute wait. \`/unapprove\` to withdraw._`,
               ].filter((line) => line !== null);
               const body = lines.join("\n");
 

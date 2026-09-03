@@ -8,7 +8,7 @@ matches the task before you write a line:
 | --- | --- |
 | Find your way around — two orphan branches, what lives where, how the film becomes a broadcast | [`skills/repository-map`](./skills/repository-map/SKILL.md) |
 | Write or edit a scene, and pass the format check on the first try | [`skills/writing-a-scene`](./skills/writing-a-scene/SKILL.md) |
-| Get a pull request merged — the vote, the anchor, the cooling-off, credit | [`skills/how-approval-works`](./skills/how-approval-works/SKILL.md) |
+| Get a pull request merged — the vote, the anchor, the wait after a push, credit | [`skills/how-approval-works`](./skills/how-approval-works/SKILL.md) |
 
 ## Rules that apply to every change here
 

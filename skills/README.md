@@ -6,8 +6,8 @@ what you are trying to do.
 | Guide | Read it when you want to… |
 | --- | --- |
 | [repository-map](./repository-map/SKILL.md) | understand how this repository is laid out — the two branches, where the film lives, where the code lives, and how the machine reads the film. |
-| [writing-a-scene](./writing-a-scene/SKILL.md) | write or edit a scene: the file format, the two kinds of cut, seeds, lengths, and how to get a clean pass from the checker. |
-| [how-approval-works](./how-approval-works/SKILL.md) | get your pull request merged: who can vote, the six-hour cooling-off from the last push, `/approve`, `/block`, and how credit lands on screen. |
+| [writing-a-scene](./writing-a-scene/SKILL.md) | write or edit a scene: the file format, the `continue` flag, seeds, lengths, and how to get a clean pass from the checker. |
+| [how-approval-works](./how-approval-works/SKILL.md) | get your pull request merged: who can vote, the wait counted from the last push, `/approve`, `/block`, and how credit lands on screen. The numbers live in the bot's comment, not here. |
 
 These guides live on the `story` branch and are maintained by the project. A
 story pull request cannot change them — it may only touch episode files and the

@@ -58,7 +58,7 @@ jobs:
           # the reviewed one. Move this sha deliberately, after the change to
           # story-tools/ has landed on `code` (see the code branch's
           # skills/story-ci-and-approval).
-          ref: a4c1365587004d08b952c9dc1828796069f4b912
+          ref: 053ec53d64a43fe8455a1f964ba5ecf7b043fbb7
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false
@@ -173,7 +173,7 @@ jobs:
       - name: Fetch the validator from the code branch
         uses: actions/checkout@v4
         with:
-          ref: a4c1365587004d08b952c9dc1828796069f4b912
+          ref: 053ec53d64a43fe8455a1f964ba5ecf7b043fbb7
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false

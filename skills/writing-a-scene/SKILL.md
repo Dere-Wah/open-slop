@@ -1,6 +1,6 @@
 ---
 name: writing-a-scene
-description: Write or edit an Open Slop scene — the episode file format, the seed/seconds/continue header, the two kinds of cut and the hard-cut rule, the legal clip lengths, and how to pass the format checker on the first try.
+description: Write or edit an Open Slop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, and how to pass the format checker on the first try.
 ---
 
 # Writing a scene
@@ -77,21 +77,20 @@ what the model itself accepts.) Values are read strictly: `seed: 1e3`,
 
 Pick another and the checker tells you the nearest two.
 
-## The two kinds of cut
+## `continue`
 
-`continue` chooses between the model's two ways from one clip to the next:
+`continue` is one true/false choice: does this scene start from the last frame
+of the scene before it?
 
-- **`continue: false` — a cut to black.** The scene is rendered on its own and
-  the stream cuts to black before it. Use it for a fresh start: a new place, a
-  jump in time, a new beat. Write the prompt self-contained.
-- **`continue: true` — a hard cut in a continuous take.** The scene opens on the
-  exact final frame of the scene before it, with no black between them. This is
-  seamless and it is also the trap: the clip generates forward from a generated
-  frame, so if you write "the camera keeps following…" the picture smears and
-  degrades within a few scenes. **So a `continue: true` scene must open on a
-  described hard cut to a new shot** — `Hard cut to a wide shot of …`, `Cut to:
-  inside the lamp room, a close-up of …`. The checker requires it. The cut makes
-  the model rebuild the whole image, which keeps a chain sharp indefinitely.
+- **`true`** (the default) — the scene picks up from the previous clip's final
+  frame, with no black between them.
+- **`false`** — the scene starts fresh, after a cut to black.
+
+The checker does not look at the prompt for this; it only reads the flag.
+
+**Warning:** a continued scene is generated from a generated frame. A few in a
+row look fine; a long chain of them degrades — the picture drifts, softens, and
+loses detail. Put a `continue: false` in every few scenes to reset it.
 
 `continue: true` can even be the first scene of a file — it then continues from
 the last scene of the previous episode, letting two episodes flow together.
