@@ -169,7 +169,7 @@ export function Rundown({
           )}
           {rundown.truncated && (
             <span>
-              The film is longer than fits here —{" "}
+              The movie is longer than fits here —{" "}
               <a
                 href={safeHttpUrl(rundown.story_url) ?? "#"}
                 target="_blank"

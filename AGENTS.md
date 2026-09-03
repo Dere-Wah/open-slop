@@ -1,6 +1,6 @@
 # Agent instructions for the `code` branch
 
-This branch holds the machine that plays Open Slop — the Python projector, the
+This branch holds the machine that plays OpenSlop — the Python projector, the
 Next.js viewer, and the validator that defines the film's format. The film
 itself lives on the `story` branch, which has its own `AGENTS.md` and `skills/`.
 

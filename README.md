@@ -1,4 +1,4 @@
-# Open Slop — the code
+# OpenSlop — the code
 
 > **You are on the `code` branch** of
 > [Dere-Wah/open-slop](https://github.com/Dere-Wah/open-slop). This branch
@@ -7,8 +7,9 @@
 > [**`story` branch**](https://github.com/Dere-Wah/open-slop/tree/story), which
 > is the repository's default branch. Watch at **openslop.live**.
 
-Open Slop is a film that never stops playing, that anyone can write. The
-screenplay lives in git as one episode per file. A projector reads the story
+OpenSlop is the first ever open source movie: a movie its audience writes,
+scene by scene, through pull requests. The screenplay lives in git as one
+episode per file. A projector reads the story
 branch, renders every scene live on [Reactor](https://reactor.inc) — the
 [`reactor/fast-h3`](https://docs.reactor.inc) video model, at the seed the
 scene names, one session held open for the whole run — and broadcasts the
@@ -59,6 +60,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `viewer/` | The Next.js viewer, laid out like a GitHub repository page: the player, the curtain (pre-show while nothing is on air), a now-playing bar, the rundown and credits (ending with when the next screening starts), an About panel, chat. No UI package; the tokens are in `viewer/app/globals.css`. |
 | `skills/` | Guides for changing this branch: the projector, the format, the CI and vote, the viewer's design. |
 | `assets/how-to-approve.png` | The three-step screenshot strip the story bot embeds in its "Audience vote" comment. Served raw from this branch. |
+| `assets/screening.png` | The viewer on air, embedded at the top of the story branch's README. Retake it from a live screening when the page changes: a 1440-wide shot of the viewer, cropped above the Next.js dev badge. |
 | `AGENTS.md` | Points coding agents at the skills and states the rules that apply everywhere. |
 
 ## Run it locally

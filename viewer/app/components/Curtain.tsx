@@ -44,7 +44,7 @@ export function Curtain({
   const programme =
     rundown && (mode !== "loading" || rundown.screening === state?.screening) ? rundown : null;
   const title =
-    (mode === "loading" && state?.episode_title) || programme?.episodes[0]?.title || "Open Slop";
+    (mode === "loading" && state?.episode_title) || programme?.episodes[0]?.title || "OpenSlop";
 
   const buffered = state?.buffered_seconds ?? 0;
   const target = state?.target_seconds ?? 0;
@@ -65,7 +65,7 @@ export function Curtain({
 
       <header className="relative flex min-w-0 max-w-full flex-col items-center gap-1 text-center">
         <span className="curtain-kicker items-center gap-2 font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-500">
-          Open Slop
+          OpenSlop
           {typeof state?.screening === "number" && mode !== "offair" && (
             <> · screening nº {state.screening}</>
           )}
@@ -132,7 +132,7 @@ function Tagline({
   const seconds = state?.film_seconds ?? programme?.total_seconds;
   return (
     <>
-      {state?.restart && <>starting over from the top · </>}a film written by everyone
+      {state?.restart && <>starting over from the top · </>}the first ever open source movie
       {scenes > 0 && (
         <>
           {" "}
@@ -200,7 +200,7 @@ function Leader({
           <span
             key={secondsLeft}
             className="curtain-ring-number curtain-tick font-mono font-light leading-none tabular-nums text-zinc-50"
-            title="seconds of film still to build"
+            title="seconds of movie still to build"
           >
             {secondsLeft}
           </span>

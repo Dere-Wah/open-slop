@@ -64,7 +64,7 @@ export function Chat({
           <h2 className="font-semibold">Chat</h2>
           {entries.length > 0 && <span className="gh-counter">{entries.length}</span>}
         </div>
-        <span className="hidden text-xs text-fg-muted sm:inline">to change the film, open a PR</span>
+        <span className="hidden text-xs text-fg-muted sm:inline">to add a scene, open a PR</span>
       </header>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">

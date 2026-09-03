@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Open Slop — a film that never stops playing, that anyone can write",
+  title: "OpenSlop | The First Ever Open Source Movie",
   description:
-    "An open-source film screened around the clock. The screenplay is a branch on GitHub; merge a pull request and it plays.",
+    "A movie written by its audience, screened around the clock. The screenplay is a branch on GitHub: add a scene in a pull request, get it approved, and it is on air in the next screening.",
 };
 
 export const viewport: Viewport = {

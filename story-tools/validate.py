@@ -1,6 +1,6 @@
 """The one validator, shared by CI and the projector.
 
-An Open Slop screenplay is a set of episode files at the root of the `story`
+An OpenSlop screenplay is a set of episode files at the root of the `story`
 branch. One file is one episode; one episode is a run of scenes separated by
 `---` blocks. This module is the single implementation of what a legal episode
 is: CI runs it to gate a pull request, and the projector runs the same code to
@@ -677,7 +677,7 @@ def report(film: Film, changed_episodes: list[str]) -> str:
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Validate an Open Slop screenplay.")
+    parser = argparse.ArgumentParser(description="Validate an OpenSlop screenplay.")
     parser.add_argument("root", help="the story root directory (holds the episode files)")
     parser.add_argument(
         "--changed",

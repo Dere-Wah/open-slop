@@ -1,4 +1,4 @@
-"""The Open Slop projector. See ../README on the code branch for the picture.
+"""The OpenSlop projector. See ../README on the code branch for the picture.
 
 Wiring, in dependency order:
 

@@ -1,4 +1,4 @@
-# Contributing to Open Slop
+# Contributing to OpenSlop
 
 There are two ways to contribute, and they live on two different branches.
 

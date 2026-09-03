@@ -1,6 +1,6 @@
 ---
 name: projector-architecture
-description: How the Open Slop projector turns the story branch into a 24/7 broadcast — the reel snapshot, the bounded pre-roll against the model's short queue, the curtain that buffers before the first frame, chaining and refusals, the restart-on-disconnect rule, and the two payloads the viewer receives. Read before changing anything under projector/.
+description: How the OpenSlop projector turns the story branch into a 24/7 broadcast — the reel snapshot, the bounded pre-roll against the model's short queue, the curtain that buffers before the first frame, chaining and refusals, the restart-on-disconnect rule, and the two payloads the viewer receives. Read before changing anything under projector/.
 ---
 
 # The projector

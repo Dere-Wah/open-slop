@@ -18,7 +18,7 @@ import { safeHttpUrl } from "@/lib/safeUrl";
 import type { Contributor, Rundown, ShowState } from "@/lib/types";
 
 const SITE = "openslop.live";
-const TOPICS = ["open-source", "film", "world-model", "livestream", "community", "reactor", "livekit"];
+const TOPICS = ["open-source", "movie", "world-model", "livestream", "community", "reactor", "livekit"];
 
 /**
  * The right-hand column, in the shape of a GitHub repository's About panel:
@@ -44,11 +44,12 @@ export function About({
       <section className="pb-4">
         <h2 className="mb-2 text-base font-semibold">About</h2>
         <p className="text-sm text-fg">
-          A film that never stops playing, that anyone can write. The screenplay is the{" "}
+          <strong className="font-semibold">The first ever open source movie.</strong> It is written
+          by whoever shows up: the screenplay is the{" "}
           <code className="rounded bg-canvas-overlay px-1 py-0.5 font-mono text-xs">{repo.branch}</code>{" "}
-          branch of this repository; a projector reads it, renders every scene with a video model,
-          and screens the result here around the clock. Open a pull request, get it approved by
-          other viewers, and your scene plays in the next screening.
+          branch of this repository, a projector renders every scene live on Reactor, and the movie
+          plays here around the clock. Add a scene in a pull request, get it approved by other
+          viewers, and it is on air in the next screening — with your name on it.
         </p>
         <ul className="mt-3 flex flex-col gap-2 text-sm">
           <li className="flex items-center gap-2">
@@ -72,7 +73,7 @@ export function About({
           <li className="flex items-center gap-2">
             <LawIcon className="shrink-0 text-fg-muted" />
             <a href={treeUrl(repo)} target="_blank" rel="noreferrer" className="text-fg-muted hover:text-accent">
-              CC BY-SA 4.0 (the film)
+              CC BY-SA 4.0 (the movie)
             </a>
           </li>
           <li className="flex items-center gap-2">

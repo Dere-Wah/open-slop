@@ -1,6 +1,6 @@
 ---
 name: viewer-design
-description: How the Open Slop viewer is built and styled — a Next.js page laid out as a GitHub repository, its design tokens, its component map, the one grid that serves desktop and phone, the curtain's container queries, and how the rundown scales to hundreds of episodes. Read before changing anything under viewer/.
+description: How the OpenSlop viewer is built and styled — a Next.js page laid out as a GitHub repository, its design tokens, its component map, the one grid that serves desktop and phone, the curtain's container queries, and how the rundown scales to hundreds of episodes. Read before changing anything under viewer/.
 ---
 
 # The viewer
@@ -12,7 +12,7 @@ GitHub bytes the page loads are avatar images, which come off a CDN.
 
 ## The look is a GitHub repository page
 
-Open Slop is a film that lives on a branch, and the page says so by looking
+OpenSlop is a film that lives on a branch, and the page says so by looking
 like the branch's home: the `owner / repo` title with its `Public` label and
 action buttons, an underline nav, then a two-column body
 with the content on the left and an About panel on the right. A visitor

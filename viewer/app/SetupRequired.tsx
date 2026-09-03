@@ -6,7 +6,7 @@ export function SetupRequired() {
       <div className="gh-box w-full max-w-lg">
         <div className="gh-box-header">
           <FilmIcon className="text-fg-muted" />
-          <h1 className="font-semibold">Open Slop — almost there</h1>
+          <h1 className="font-semibold">OpenSlop — almost there</h1>
         </div>
         <div className="space-y-3 p-4 text-sm text-fg-muted">
           <p>
@@ -35,7 +35,7 @@ export function SetupRequired() {
             <code className="rounded bg-canvas-overlay px-1 py-0.5 font-mono text-xs text-fg">
               projector/
             </code>{" "}
-            folder on the code branch) uses the same LiveKit project and broadcasts the film this
+            folder on the code branch) uses the same LiveKit project and broadcasts the movie this
             page plays.
           </p>
         </div>

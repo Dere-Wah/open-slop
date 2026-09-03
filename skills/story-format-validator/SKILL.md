@@ -1,6 +1,6 @@
 ---
 name: story-format-validator
-description: The Open Slop episode format as story-tools/validate.py enforces it — file and filename rules, scene header parsing, the legal clip lengths, the continue flag, the pull-request path allowlist with renames and deletions, and the procedure for changing a rule without CI, the projector, and the story branch's guides drifting apart.
+description: The OpenSlop episode format as story-tools/validate.py enforces it — file and filename rules, scene header parsing, the legal clip lengths, the continue flag, the pull-request path allowlist with renames and deletions, and the procedure for changing a rule without CI, the projector, and the story branch's guides drifting apart.
 ---
 
 # The story format and its validator

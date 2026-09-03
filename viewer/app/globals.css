@@ -3,7 +3,7 @@
 /* Design tokens.
  *
  * The viewer is styled to read as a GitHub repository page, because that is
- * what Open Slop is: a film that lives on a branch. The palette, type stack,
+ * what OpenSlop is: a film that lives on a branch. The palette, type stack,
  * radii, and spacing below follow GitHub's dark theme (Primer) closely enough
  * that a visitor coming from the repo feels they never left it. Nothing here
  * depends on a component library; the tokens are plain CSS variables exposed

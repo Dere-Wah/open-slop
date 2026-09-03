@@ -1,6 +1,6 @@
 ---
 name: story-ci-and-approval
-description: How Open Slop lets anyone merge into the film with no maintainer — the story branch's three workflows, the security invariants that make pull_request_target safe, the tamper-proof vote anchor, the quorum and cooling-off algorithm, account-age and block rules, auto-merge re-arming, the post-merge tip check, and the rulesets that hold it together. Read before touching .github/workflows on the story branch or the repository's settings.
+description: How OpenSlop lets anyone merge into the film with no maintainer — the story branch's three workflows, the security invariants that make pull_request_target safe, the tamper-proof vote anchor, the quorum and cooling-off algorithm, account-age and block rules, auto-merge re-arming, the post-merge tip check, and the rulesets that hold it together. Read before touching .github/workflows on the story branch or the repository's settings.
 ---
 
 # Story CI and the audience vote

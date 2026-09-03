@@ -1,4 +1,4 @@
-# Open Slop code skills
+# OpenSlop code skills
 
 Short guides to the machine that plays the film. Read the one that matches what
 you are about to change.

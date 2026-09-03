@@ -148,7 +148,7 @@ export function ShowPage({
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-fg-muted sm:px-6">
-          <span>Open Slop · an open-source film. Screenplay CC BY-SA 4.0, code Apache-2.0.</span>
+          <span>OpenSlop · the first ever open source movie. Screenplay CC BY-SA 4.0, code Apache-2.0.</span>
           <span className="flex flex-wrap gap-4">
             <a href={repoUrl(repo)} target="_blank" rel="noreferrer" className="hover:text-accent">
               GitHub
