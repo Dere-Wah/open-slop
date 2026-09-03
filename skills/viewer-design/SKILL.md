@@ -25,6 +25,15 @@ to Tailwind through `@theme`, and the recurring pieces (`.gh-btn`,
 `.gh-underline-nav`, `.gh-avatar`, `.gh-progress`) are one class each in
 `@layer components`, so a utility on the same element still wins.
 
+Every `<a>` underlines on hover, as on GitHub; the rule lives in `@layer
+base` in `globals.css`, so it applies without a class. A link that looks
+like a button, tab, or chip opts out: `.gh-btn`, `.gh-topic`, and the
+underline nav do so in `@layer components`, and a one-off chip (the
+overlay badges, the PR chip in chat, avatar links) adds
+`hover:no-underline`. Do not put element rules such as `a { … }` outside
+a layer: an unlayered rule beats every layer, and both the components and
+the utilities stop being able to override it.
+
 | Token group | Classes | Use |
 | --- | --- | --- |
 | Canvas | `bg-canvas`, `bg-canvas-inset`, `bg-canvas-subtle`, `bg-canvas-overlay` | page, box headers, code chips |

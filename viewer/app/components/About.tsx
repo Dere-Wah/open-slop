@@ -146,7 +146,7 @@ export function About({
           href="https://reactor.inc"
           target="_blank"
           rel="noreferrer"
-          className="group inline-flex items-center gap-2.5 text-sm"
+          className="group inline-flex items-center gap-2.5 text-sm hover:no-underline"
           title="Reactor — the video model behind every scene"
         >
           <ReactorMark size={32} className="shrink-0 rounded-full ring-1 ring-line" />
@@ -176,7 +176,7 @@ export function About({
               return (
                 <li key={person.name}>
                   {url ? (
-                    <a href={url} target="_blank" rel="noreferrer" title={person.name}>
+                    <a href={url} target="_blank" rel="noreferrer" title={person.name} className="hover:no-underline">
                       {avatar}
                     </a>
                   ) : (

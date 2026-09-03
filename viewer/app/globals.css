@@ -82,9 +82,20 @@ button:disabled {
   cursor: not-allowed;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Like GitHub: a link shows what it is on hover, with an underline. Anything
+   that is a button, a tab, or a chip in the shape of a link opts out (below,
+   and with `hover:no-underline` on one-off chips). Both rules sit in the base
+   layer so component classes and utilities can override them; an unlayered
+   rule would beat every layer. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
 }
 
 ::selection {
@@ -168,6 +179,13 @@ a {
   .gh-topic:hover {
     background: var(--color-accent-emphasis);
     color: var(--color-fg-on-emphasis);
+    text-decoration: none;
+  }
+
+  .gh-btn:hover,
+  .gh-underline-nav a:hover,
+  .gh-underline-nav button:hover {
+    text-decoration: none;
   }
 
   .gh-underline-nav a,
@@ -213,6 +231,7 @@ a {
   }
   .gh-link:hover {
     text-decoration: underline;
+    text-underline-offset: 0.15em;
   }
 
   /* The film's progress under the player, and the buffer on the curtain. */

@@ -41,7 +41,7 @@ export function Overlay({ state, viewers }: { state: ShowState | null; viewers: 
         href="https://reactor.inc"
         target="_blank"
         rel="noreferrer"
-        className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/60 py-1.5 pl-1.5 pr-2.5 text-xs font-medium text-fg-muted backdrop-blur transition-colors hover:text-fg"
+        className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/60 py-1.5 pl-1.5 pr-2.5 text-xs font-medium text-fg-muted backdrop-blur transition-colors hover:text-fg hover:no-underline"
         title="The video model behind every scene"
       >
         <ReactorMark size={16} className="shrink-0" />

@@ -93,7 +93,7 @@ export function NowPlaying({
       <Avatar name={author} url={state.author_url} size={20} />
       <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {authorUrl ? (
-          <a href={authorUrl} target="_blank" rel="noreferrer" className="font-semibold text-fg hover:underline">
+          <a href={authorUrl} target="_blank" rel="noreferrer" className="font-semibold text-fg">
             {author}
           </a>
         ) : (
@@ -115,7 +115,7 @@ export function NowPlaying({
           <span className="inline-flex items-center gap-1 font-mono text-xs text-fg-muted">
             <GitCommitIcon size={14} />
             {commitUrl ? (
-              <a href={commitUrl} target="_blank" rel="noreferrer" className="hover:text-accent hover:underline">
+              <a href={commitUrl} target="_blank" rel="noreferrer" className="hover:text-accent">
                 {state.commit}
               </a>
             ) : (

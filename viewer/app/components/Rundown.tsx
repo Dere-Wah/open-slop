@@ -292,7 +292,7 @@ function EpisodeRow({
                       href={authorUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="truncate text-fg hover:text-accent hover:underline"
+                      className="truncate text-fg hover:text-accent"
                     >
                       {scene.author}
                     </a>
@@ -313,7 +313,7 @@ function EpisodeRow({
                         href={commitUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="hover:text-accent hover:underline"
+                        className="hover:text-accent"
                       >
                         {scene.commit}
                       </a>
