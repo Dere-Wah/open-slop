@@ -16,8 +16,9 @@ default branch**, not from the pull request. So the workflow files sit on
 `story` (the default branch), where the allowlist keeps pull requests off them,
 and they check `story-tools/` out **from this branch at a pinned ref** to do
 the actual judging. A story contributor can therefore neither edit the check
-nor the checker. `GITHUB_SETUP.todo.md` tracks moving that ref from the branch
-name to a commit sha once the repository is public.
+nor the checker. The ref is a commit sha on this branch; moving it is a
+maintainer commit on `story` (admins bypass the ruleset for exactly this), made
+**after** the `story-tools/` change has landed here.
 
 ## The three workflows
 
@@ -103,19 +104,29 @@ whole film, and opens (or updates, then closes) a bot issue when it fails. The
 projector meanwhile airs its last good snapshot and shows a notice. This is a
 deliberate trade: rare, visible, self-healing breakage over a rebase treadmill.
 
-## Rulesets (done once, tracked in `GITHUB_SETUP.todo.md`)
+## Rulesets (applied; the operator's record is `GITHUB_SETUP.todo.md`)
 
 - **`story`** (default): pull request required with **0** required approvals;
   required checks `story/validate` and `story/quorum` sourced from GitHub
-  Actions; non-strict; block force-push and deletion; **squash-only** merge;
-  "Allow auto-merge" on at the repository level.
-- **`code`**: pull request required, at least one review, `code-ci` required,
-  restricted push, block force-push.
+  Actions; non-strict; linear history; block force-push and deletion;
+  **squash-only** merge; "Allow auto-merge" on at the repository level.
+- **`code`**: pull request required, one review, the `code-ci` jobs
+  `story-tools` and `viewer` required, block force-push and deletion.
+- **Repository admins bypass both rulesets.** A solo maintainer otherwise
+  cannot move the validator pin or edit `skills/` on `story`, nor merge into
+  `code` (nobody can review their own pull request). Narrow this when there is
+  a second maintainer.
+- The repository must be **public**: on a private Free-plan repository GitHub
+  disables rulesets, branch protection, and auto-merge, and the whole gate
+  silently degrades to "nothing is enforced".
 - Actions settings: workflows need `contents: write`, `statuses: write`,
   `pull-requests: write`, `issues: write` (each file declares the minimum it
   uses); "Allow GitHub Actions to create and approve pull requests" is **off**
-  (the bot never opens or approves one); fork pull requests to the default
-  branch require no approval to run (they are data-only).
+  (the bot never opens or approves one). Fork pull-request approval is set to
+  the least restrictive option GitHub offers, "first-time contributors who are
+  new to GitHub": a brand-new account's first pull request waits for a
+  maintainer to click *Approve and run*; everyone else runs immediately. The
+  workflows treat the pull request as data only, so this is safe.
 
 ## Testing a change to these workflows
 

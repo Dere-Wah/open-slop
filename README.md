@@ -1,9 +1,11 @@
 # Open Slop — the code
 
-> **You are on the `code` branch.** This branch holds the machine that plays
-> the film: a Python **projector** and a Next.js **viewer**. The film itself —
-> the screenplay anyone can write — lives on the **`story` branch**, which is
-> the repository's default branch. Watch at **openslop.live**.
+> **You are on the `code` branch** of
+> [Dere-Wah/open-slop](https://github.com/Dere-Wah/open-slop). This branch
+> holds the machine that plays the film: a Python **projector** and a Next.js
+> **viewer**. The film itself — the screenplay anyone can write — lives on the
+> [**`story` branch**](https://github.com/Dere-Wah/open-slop/tree/story), which
+> is the repository's default branch. Watch at **openslop.live**.
 
 Open Slop is a film that never stops playing, that anyone can write. The
 screenplay lives in git as one episode per file. A projector reads the story

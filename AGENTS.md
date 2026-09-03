@@ -35,6 +35,11 @@ Read the guide that matches the task before you change anything:
 - Use `pnpm` in `viewer/`. Do not commit `.env*`, `node_modules/`, build
   output, or a virtualenv.
 - `GITHUB_SETUP.todo.md` is intentionally uncommitted; it is the operator's
-  checklist for the real repository.
+  record of the repository settings (rulesets, auto-merge, Actions
+  permissions, the validator pin) and how they were applied. The public facts
+  it holds are restated in `skills/story-ci-and-approval`.
+- Both branches have rulesets that require a pull request; repository admins
+  bypass them so a solo maintainer can move the validator pin on `story` and
+  land changes here. Prefer a pull request for anything a reviewer should see.
 - Never commit, push, or open a pull request without the human in the
   conversation asking for it.
