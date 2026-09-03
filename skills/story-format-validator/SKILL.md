@@ -1,6 +1,6 @@
 ---
 name: story-format-validator
-description: The Open Slop episode format as story-tools/validate.py enforces it — file and filename rules, scene header parsing, the legal clip lengths, the continue/hard-cut rule, the pull-request path allowlist with renames and deletions, and the procedure for changing a rule without CI, the projector, and the story branch's guides drifting apart.
+description: The Open Slop episode format as story-tools/validate.py enforces it — file and filename rules, scene header parsing, the legal clip lengths, the continue flag, the pull-request path allowlist with renames and deletions, and the procedure for changing a rule without CI, the projector, and the story branch's guides drifting apart.
 ---
 
 # The story format and its validator
@@ -62,12 +62,10 @@ words and not on a stray empty line someone else added.
 - **The first scene of the film cannot set `continue: true`.** This check is
   skipped when an earlier file failed to parse, so one broken file does not
   cascade a misleading error onto its neighbour.
-- **A continued scene must open on a hard cut.** When the effective `continue`
-  is true, the prompt must open on `_HARD_CUT_RE` — `cut to` with an optional
-  `hard`, case-insensitive: `Hard cut to a wide shot…`, `Cut to: the lamp
-  room…`. A continuation generates
-  forward from the previous clip's last frame; without a described cut the
-  picture smears. When `continue` is false the rule does not apply.
+- **`continue` puts no constraint on the prompt.** It is only the true/false
+  choice of whether the scene starts from the previous clip's last frame. Long
+  chains of continued scenes degrade visually; that is a warning in the
+  writing guide, not a rule here.
 - An empty film (no scenes at all) is an error.
 
 ## The pull-request allowlist (`validate_paths`)

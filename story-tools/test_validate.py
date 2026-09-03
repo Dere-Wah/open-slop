@@ -22,8 +22,8 @@ from validate import (
     validate_paths,
 )
 
-# A legal scene body that opens on a hard cut, reused across chained cases.
-_CUT = "Hard cut to a wide shot of a harbour at dawn. Gulls, a low bell."
+# A scene body reused across chained (continue: true) cases.
+_CUT = "A wide shot of a harbour at dawn. Gulls, a low bell."
 _FRESH = "A wide shot of a harbour at dawn, one lighthouse turning. Gulls, a bell."
 _LEN = LEGAL_SECONDS[5]  # a mid-range legal length
 
@@ -208,15 +208,15 @@ def test_rejects_overlong_title_and_filename():
     assert any("filename is" in i.message for i in validate_paths([long_name]))
 
 
-def test_rejects_continue_true_without_a_hard_cut():
+def test_continue_true_puts_no_constraint_on_the_prompt():
     text = _episode(
         f"seed: 1\nseconds: {_LEN}",
         _FRESH,
         f"seed: 2\nseconds: {_LEN}\ncontinue: true",
-        "The camera keeps following her down the hall.",  # no described cut
+        "The camera keeps following her down the hall.",
     )
     _film_obj, issues = _film({"0010-a.md": text})
-    assert any("must open on a described hard cut" in issue.message for issue in issues), _messages(issues)
+    assert issues == [], _messages(issues)
 
 
 def test_rejects_heading_inside_a_prompt():

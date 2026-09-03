@@ -25,7 +25,7 @@ maintainer commit on `story` (admins bypass the ruleset for exactly this), made
 | Workflow | Trigger | Posts |
 | --- | --- | --- |
 | `story-validate` | `pull_request_target` on `story`; `push` to `story` | commit status `story/validate`; sticky comment with the report; on push, an issue when the tip does not validate |
-| `story-quorum` | `issue_comment` (created/edited/deleted); `pull_request_target` opened/reopened/synchronize; hourly cron | commit status `story/quorum`; sticky tally comment; keeps auto-merge armed |
+| `story-quorum` | `issue_comment` (created/edited/deleted); `pull_request_target` opened/reopened/synchronize; cron every 10 minutes (so the wait after the last push is honoured to the minute, not the hour) | commit status `story/quorum`; sticky tally comment; keeps auto-merge armed |
 | `story-welcome` | `pull_request_target` opened | one greeting comment with the rules |
 
 Both statuses are **required checks** in the `story` ruleset, with GitHub
@@ -49,8 +49,11 @@ Actions as their only accepted source, so nobody can hand-post a green one.
 
 ## The vote (`story-quorum`)
 
-Constants at the top of the script: `QUORUM = 3`, `COOLING_OFF_HOURS = 6`,
-`MIN_ACCOUNT_AGE_DAYS = 30`.
+Constants at the top of the script: `QUORUM`, `COOLING_OFF_MINUTES`,
+`MIN_ACCOUNT_AGE_DAYS`. **They live only there.** The story branch's README and
+skills describe the mechanism and tell readers to look at the bot's tally
+comment for the current values, so tuning them is a one-line change with no
+docs to chase. Do not copy the values into prose anywhere.
 
 **The anchor.** A vote counts only if cast after the head was pushed. The push
 time is **not** read from the commit — committer dates are attacker-controlled,
@@ -74,8 +77,8 @@ runs on `synchronize`: it plants the anchor on every new head immediately.
   survives pushes.
 
 **The status.** `failure` "blocked by a maintainer"; `success` when
-`count ≥ QUORUM` and `now ≥ anchor + COOLING_OFF_HOURS`; otherwise `pending`
-with the count and the hours left. Cooling-off counts from the anchor, so a
+`count ≥ QUORUM` and `now ≥ anchor + COOLING_OFF_MINUTES`; otherwise `pending`
+with the count and the minutes left. The wait counts from the anchor, so a
 placeholder opened early and filled in late waits the full window after its
 real push.
 
@@ -88,7 +91,7 @@ what auto-merge would have done. Squash is load-bearing: one contribution is
 one commit, and per-scene credit reads the squash commit's author and its
 `Co-authored-by` trailers.
 
-**Robustness.** The hourly sweep evaluates every open pull request in its own
+**Robustness.** The ten-minute sweep evaluates every open pull request in its own
 `try/catch`, so one 404 does not abort the rest. `concurrency` serialises runs
 per pull request.
 

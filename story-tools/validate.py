@@ -58,7 +58,6 @@ MAX_FILENAME_CHARS = 72
 
 _EPISODE_RE = re.compile(r"^\d{4}-[a-z0-9-]+\.md$")
 _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$")
-_HARD_CUT_RE = re.compile(r"^\s*(hard\s+)?cut to\b", re.IGNORECASE)
 _INT_RE = re.compile(r"^[0-9]+$")  # ASCII digits only; `\d` would admit other scripts
 _FENCE = "---"
 _ALLOWED_KEYS = ("seed", "seconds", "continue")
@@ -312,8 +311,8 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
     """Parse one episode file into scenes, collecting every problem found.
 
     Returns the episode (None when its structure is too broken to trust) and
-    the list of issues. `effective_continue` and the cross-file hard-cut rule
-    are filled later by `build_film`, since they depend on film order.
+    the list of issues. `effective_continue` is filled later by `build_film`,
+    since it depends on film order.
     """
     issues: list[Issue] = []
     if not _EPISODE_RE.match(name):
@@ -512,16 +511,6 @@ def build_film(root: Path) -> tuple[Film, list[Issue]]:
                 scene.effective_continue = (
                     scene.declared_continue if scene.declared_continue is not None else True
                 )
-            if scene.effective_continue and scene.body and not _HARD_CUT_RE.match(scene.body):
-                issues.append(
-                    Issue(
-                        episode.path,
-                        scene.body_line_start,
-                        f"scene {scene.index + 1} continues the previous shot, so its prompt "
-                        "must open on a described hard cut, e.g. 'Hard cut to a wide shot of …'",
-                    )
-                )
-
     return Film(episodes), issues
 
 
