@@ -7,8 +7,9 @@ Watch it live at **[openslop.live](https://openslop.live)**.
 This branch _is_ the film. Every `NNNN-title.md` file here is one episode of a
 single, communally-written movie. A projector reads this branch, renders every
 scene with an AI video model, and broadcasts the result into a 24/7 stream.
-When the film ends, the projector reads the branch again — so the moment your
-pull request merges, your scene is in the next screening, with your name on it.
+Before each screening starts, the projector snapshots this branch and plays
+exactly that — so once your pull request merges, your scene is in the first
+screening snapshotted after the merge, with your name on it.
 
 No studio. No director. No maintainer approves the story. **The audience does:
 three approvals from anyone and your scene is canon.**
@@ -75,24 +76,30 @@ Files play in the order of their four-digit number. Numbers step by 10, so to
 put an episode between `0010` and `0020`, call it `0015`. To add to the end,
 pick a higher number. That is the whole ordering system — no lists to maintain.
 
+An episode can be renamed (to another `NNNN-title.md` name — that is how you
+reorder) or deleted, through the same pull request and vote. The three root
+documents cannot be deleted or renamed.
+
 ### Open the pull request
 
-1. Add or edit one `NNNN-title.md` file. A pull request may only touch episode
-   files and `README.md` / `STYLE.md` / `LICENSE` — nothing else.
+1. Add, edit, rename, or delete `NNNN-title.md` files. A pull request may only
+   touch episode files and `README.md` / `STYLE.md` / `LICENSE` — nothing else,
+   and no folders.
 2. Open it. A bot checks the format and comments what it found, including where
    your episode lands and the film's new runtime.
 3. Ask people to watch and approve.
 
 ## How approval works
 
-- Anyone can approve. Comment **`/approve`** on the pull request.
-- **Three distinct approvals** (not counting the author) merges it, once it has
-  been open past a short cooling-off window.
-- Editing the scene after approvals resets them — people approve the words that
-  are there.
-- A maintainer can `/block` something harmful; the video model also moderates
-  every prompt. This is a public, communal film — keep it something a stranger
-  can enjoy.
+- Anyone whose GitHub account is at least **30 days old** can approve. Comment
+  **`/approve`** on the pull request.
+- **Three distinct approvals** (not counting the author) merges it, once
+  **six hours** have passed since the pull request's last push.
+- Pushing a new commit resets both the approvals and the six hours — people
+  approve the words that are there. Get your edits in before you gather votes.
+- A maintainer can `/block` something harmful (and `/unblock` it); the video
+  model also moderates every prompt. This is a public, communal film — keep it
+  something a stranger can enjoy.
 
 Full detail is in [`skills/how-approval-works`](./skills/how-approval-works/SKILL.md).
 
@@ -120,7 +127,7 @@ The bot suggests the nearest two if you pick another.
 
 - [`STYLE.md`](./STYLE.md) — the show bible. Read before writing.
 - [`skills/`](./skills) — short guides: the repository map, writing a scene, and
-  how approval works.
+  how approval works. [`AGENTS.md`](./AGENTS.md) points coding agents at them.
 - The **code** that plays the film — the projector and the viewer — lives on the
   `code` branch, not here. This branch is only the screenplay.
 

@@ -28,31 +28,43 @@ continue: true
 Hard cut to the second scene's prompt…
 ```
 
-- An optional `# Title` heading on the first line.
+- An optional `# Title` heading on the first line, up to 120 characters. It is
+  the only heading allowed in the file.
 - Then one or more scenes. Each scene is a `---` header, the two-or-three keys,
   a closing `---`, and the prompt body.
 - Nothing else in the file. A line that is exactly `---` inside a prompt body is
-  an error — it reads as a scene break.
+  an error — it reads as a scene break. A prompt line that starts with `#` is an
+  error too — it reads as a heading that landed in the wrong place.
+- Plain UTF-8 text. Windows line endings and a byte-order mark are tolerated.
 
 ## The filename sets the order
 
 `NNNN-lower-kebab.md`: four digits, a dash, then lowercase letters, digits, and
-dashes. Files play in number order. Numbers step by 10 so you can insert:
-between `0010` and `0020`, add `0015`. To add to the end, pick a higher number.
-If two people pick `0015`, both merge and the tie breaks by the rest of the
-name — nothing collides except editing the same file.
+dashes, at most 72 characters in all. Files play in number order. Numbers step
+by 10 so you can insert: between `0010` and `0020`, add `0015`. To add to the
+end, pick a higher number. If two people pick `0015`, both merge and the tie
+breaks by the rest of the name — nothing collides except editing the same file.
+
+Renaming an episode to another legal name is how you reorder it, and deleting
+one is allowed; both go through the same pull request and vote. Mind the
+neighbours: the scene after a deleted or moved episode may start with
+`continue: true` and now continue from something else, and the very first scene
+of the film can never continue. The check after the merge catches a film that
+broke this way, but the vote is the better place to catch it.
 
 ## The header keys
 
 | Key | Required | Type | Meaning |
 | --- | --- | --- | --- |
-| `seed` | yes | integer ≥ 0 | Fixes the render. The same seed and prompt always make the same clip, so your scene is reproducible and stable across screenings. Pick any number and keep it. |
+| `seed` | yes | integer ≥ 0, plain digits | Fixes the render. The same seed and prompt always make the same clip, so your scene is reproducible and stable across screenings. Pick any number and keep it. |
 | `seconds` | yes | one of the legal lengths | The clip's length. |
-| `continue` | no | `true` / `false` | How this scene joins the previous one. Defaults to `true` when the scene has a predecessor, and to `false` for the very first scene of the whole film. |
+| `continue` | no | exactly `true` or `false` | How this scene joins the previous one. Defaults to `true` when the scene has a predecessor, and to `false` for the very first scene of the whole film. |
 
-Only these three keys. Any other key is rejected — a key nothing reads is a
-contributor thinking they set something that never took effect. (There is no
-`length`; the key is `seconds`, because that is what the model itself accepts.)
+Only these three keys, written as `key: value`, one per line. Any other key is
+rejected — a key nothing reads is a contributor thinking they set something that
+never took effect. (There is no `length`; the key is `seconds`, because that is
+what the model itself accepts.) Values are read strictly: `seed: 1e3`,
+`seed: 0x10`, `continue: yes` are all errors, not guesses.
 
 ## Legal lengths
 
@@ -110,7 +122,17 @@ the `code` branch:
 
 ```bash
 python3 story-tools/validate.py <path-to-your-story-checkout>
+# with the pull request's allowlist and the runtime report too:
+python3 story-tools/validate.py <path-to-your-story-checkout> --changed 0015-x.md --report
 ```
 
 It lists every problem at once, with the file and line. A clean run is a clean
 pull request.
+
+## What happens after the merge
+
+The projector snapshots the branch about a minute of film before each screening
+starts, so your scene is on air from the first screening snapshotted after the
+merge — the viewer's countdown says which story version comes up next. Credit
+comes from `git blame` on your scene's prompt lines; see
+[how-approval-works](../how-approval-works/SKILL.md).

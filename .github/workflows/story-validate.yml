@@ -1,4 +1,5 @@
-# Gate a story pull request on the episode format.
+# Gate a story pull request on the episode format, and re-check the branch tip
+# after every merge.
 #
 # SECURITY INVARIANT — read before editing:
 #   This workflow NEVER executes a single line from the pull request. It checks
@@ -15,19 +16,32 @@
 #
 # It runs from the default branch (`story`) via pull_request_target, so the copy
 # that runs is always this trusted one, not the PR's.
+#
+# The `push` job is the second line: two pull requests that each validate on
+# their own can merge into a film that does not (one adds `0040-x.md`, the other
+# deletes the `0030` it continues from). The projector holds the last good film
+# when that happens; this job opens an issue so someone fixes the branch.
 name: story-validate
 
 on:
   pull_request_target:
+    branches: [story]
+  push:
     branches: [story]
 
 permissions:
   contents: read
   statuses: write
   pull-requests: write
+  issues: write
+
+concurrency:
+  group: story-validate-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
+  pull-request:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - name: Fetch the pull request's files (data only, never executed)
@@ -60,23 +74,23 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
+              per_page: 100,
             });
-            // Written to a file, not returned into a shell line, so a crafted
-            // filename cannot inject a command.
-            require("fs").writeFileSync(
-              "changed.txt",
-              files.map((f) => f.filename).join("\n") + "\n",
+            // status<TAB>path<TAB>previous-path, one per line, so the
+            // validator judges a rename or a deletion as what it is. Written
+            // to a file, never into a shell line: a crafted filename cannot
+            // inject a command. A tab or newline in a name is refused here.
+            const clean = (s) => (s ?? "").replace(/[\t\r\n]/g, "\uFFFD");
+            const lines = files.map((f) =>
+              [clean(f.status), clean(f.filename), clean(f.previous_filename)].join("\t"),
             );
+            require("fs").writeFileSync("changed.tsv", lines.join("\n") + "\n");
 
       - name: Validate the film
         id: validate
         run: |
-          ARGS=()
-          while IFS= read -r f; do
-            [ -n "$f" ] && ARGS+=(--changed "$f")
-          done < changed.txt
           set +e
-          python tools/story-tools/validate.py story-pr "${ARGS[@]}" --report > report.txt 2>&1
+          python tools/story-tools/validate.py story-pr --changed-file changed.tsv --report > report.txt 2>&1
           echo "code=$?" >> "$GITHUB_OUTPUT"
           cat report.txt
 
@@ -109,7 +123,7 @@ jobs:
               ok ? "### Format check passed" : "### Format check found problems",
               "",
               "```",
-              report,
+              report.slice(0, 60_000),
               "```",
               "",
               ok
@@ -117,12 +131,18 @@ jobs:
                 : "Fix the problems above and push again; this re-runs automatically.",
             ].join("\n");
 
-            const { data: comments } = await github.rest.issues.listComments({
+            // The sticky comment is the bot's own. A contributor who pastes
+            // the marker into a comment of theirs is not handing us a comment
+            // to overwrite.
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
+              per_page: 100,
             });
-            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            const existing = comments.find(
+              (c) => c.user?.login === "github-actions[bot]" && c.body && c.body.includes(marker),
+            );
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -137,4 +157,84 @@ jobs:
                 issue_number: context.payload.pull_request.number,
                 body,
               });
+            }
+
+  branch-tip:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the story tip (data only)
+        uses: actions/checkout@v4
+        with:
+          path: story-tip
+          persist-credentials: false
+
+      - name: Fetch the validator from the code branch
+        uses: actions/checkout@v4
+        with:
+          ref: code
+          path: tools
+          sparse-checkout: story-tools
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate the whole film at the tip
+        id: validate
+        run: |
+          set +e
+          python tools/story-tools/validate.py story-tip > report.txt 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat report.txt
+
+      - name: Open or close the "branch is broken" issue
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          VALIDATE_CODE: ${{ steps.validate.outputs.code }}
+        with:
+          script: |
+            const fs = require("fs");
+            const ok = process.env.VALIDATE_CODE === "0";
+            const report = fs.existsSync("report.txt")
+              ? fs.readFileSync("report.txt", "utf8").trim() || "(no output)"
+              : "(no output)";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "The story branch does not validate";
+            const marker = "<!-- open-slop:branch-tip -->";
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", creator: "github-actions[bot]", per_page: 100,
+            });
+            const existing = open.find((i) => !i.pull_request && i.body && i.body.includes(marker));
+
+            if (ok) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Fixed at ${context.sha.slice(0, 7)} — the film validates again.`,
+                });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: "closed" });
+              }
+              return;
+            }
+
+            const body = [
+              marker,
+              `The tip of \`story\` (${context.sha.slice(0, 7)}) fails the format check. Two pull requests`,
+              "that each passed on their own have merged into a film that does not validate.",
+              "The projector keeps airing the last good film until this is fixed; open a pull",
+              "request that repairs the branch and vote it in.",
+              "",
+              "```",
+              report.slice(0, 60_000),
+              "```",
+            ].join("\n");
+            if (existing) {
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body });
             }

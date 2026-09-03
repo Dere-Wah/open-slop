@@ -3,30 +3,48 @@
 # reviewers with write access, and Open Slop gives write access to no one — so
 # the vote is `/approve` comments from anyone, tallied here.
 #
-# It runs from the default branch (`story`) on every new comment, and on an
+# It runs from the default branch (`story`): on every comment, on every push to
+# a pull request (so the tally resets and auto-merge is re-armed), and on an
 # hourly sweep so a pull request that has gone quiet still crosses its
-# cooling-off line and merges. It does not merge anything itself: it sets the
-# status, and GitHub's auto-merge (armed by story-welcome) does the rest once
+# cooling-off line and merges. It does not merge anything by hand: it sets the
+# status and keeps GitHub's auto-merge armed, and auto-merge fires once
 # story/validate and story/quorum are both green.
+#
+# THE VOTE ANCHOR — read before editing:
+#   A vote counts only if it was cast after the pull request's current head was
+#   pushed. The push time is NOT read from the commit: committer dates are set
+#   by whoever commits, and a backdated amend would carry three old approvals
+#   onto new content. It is read from the first commit status this repository's
+#   bot posted on the head sha (story/validate or story/quorum), which GitHub
+#   timestamps server-side the moment the push triggered a run. Nothing a
+#   contributor writes can move it. The cooling-off window counts from the
+#   same anchor, so a placeholder opened early and filled in late still waits.
 name: story-quorum
 
 on:
   issue_comment:
     types: [created, edited, deleted]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    branches: [story]
   schedule:
     - cron: "17 * * * *"
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
-  pull-requests: read
+  pull-requests: write
   issues: write
+
+concurrency:
+  group: story-quorum-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: false
 
 jobs:
   quorum:
-    # Comments on plain issues are ignored; only pull-request threads and the
-    # scheduled sweep run.
-    if: github.event_name == 'schedule' || github.event.issue.pull_request != null
+    # Comments on plain issues are ignored; pull-request threads, pull-request
+    # pushes, and the scheduled sweep run.
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
@@ -34,51 +52,121 @@ jobs:
           script: |
             const QUORUM = 3;
             const COOLING_OFF_HOURS = 6;
+            const MIN_ACCOUNT_AGE_DAYS = 30;
             const APPROVE = /^\/approve\b/i;
             const UNAPPROVE = /^\/unapprove\b/i;
             const BLOCK = /^\/block\b/i;
+            const UNBLOCK = /^\/unblock\b/i;
             const CAN_BLOCK = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+            const BOT = "github-actions[bot]";
+            const ANCHOR_CONTEXTS = new Set(["story/validate", "story/quorum"]);
             const MARKER = "<!-- open-slop:quorum -->";
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            async function evaluate(number) {
-              const { data: pr } = await github.rest.pulls.get({
-                owner, repo, pull_number: number,
+            // Account age is looked up once per login per run.
+            const accountCreated = new Map();
+            async function eligible(login) {
+              if (!accountCreated.has(login)) {
+                try {
+                  const { data: user } = await github.rest.users.getByUsername({ username: login });
+                  accountCreated.set(login, user.type === "User" ? new Date(user.created_at).getTime() : null);
+                } catch (error) {
+                  core.warning(`could not look up @${login}: ${error.message}`);
+                  accountCreated.set(login, null);
+                }
+              }
+              const created = accountCreated.get(login);
+              if (created === null) return false;
+              return Date.now() - created >= MIN_ACCOUNT_AGE_DAYS * 86_400_000;
+            }
+
+            // When the head sha was pushed, as GitHub saw it (see the header).
+            async function anchorFor(sha) {
+              const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+                owner, repo, ref: sha, per_page: 100,
               });
+              let earliest = Infinity;
+              for (const s of statuses) {
+                if (s.creator?.login !== BOT || !ANCHOR_CONTEXTS.has(s.context)) continue;
+                earliest = Math.min(earliest, new Date(s.created_at).getTime());
+              }
+              return earliest === Infinity ? Date.now() : earliest;
+            }
+
+            async function armAutoMerge(pr) {
+              if (pr.auto_merge) return;
+              try {
+                await github.graphql(
+                  `mutation($id: ID!) {
+                     enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) {
+                       clientMutationId
+                     }
+                   }`,
+                  { id: pr.node_id },
+                );
+              } catch (error) {
+                // Auto-merge cannot be armed on a pull request that is already
+                // clean to merge; that is the one case where merging by hand
+                // is exactly what auto-merge would have done.
+                if (/clean status/i.test(error.message)) {
+                  try {
+                    await github.rest.pulls.merge({
+                      owner, repo, pull_number: pr.number, merge_method: "squash",
+                    });
+                    return;
+                  } catch (mergeError) {
+                    core.warning(`merge of #${pr.number} refused: ${mergeError.message}`);
+                    return;
+                  }
+                }
+                core.warning(
+                  `could not arm auto-merge on #${pr.number} (is 'Allow auto-merge' on?): ${error.message}`,
+                );
+              }
+            }
+
+            async function evaluate(number) {
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
               if (pr.state !== "open" || pr.base.ref !== "story") return;
 
               const head = pr.head.sha;
-              const { data: headCommit } = await github.rest.repos.getCommit({
-                owner, repo, ref: head,
-              });
-              const headTime = new Date(headCommit.commit.committer.date).getTime();
+              const anchor = await anchorFor(head);
 
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner, repo, issue_number: number, per_page: 100,
               });
 
-              // A voter's LATEST /approve or /unapprove after the head commit
-              // decides their vote — so a new commit resets the tally for free.
+              // A voter's LATEST /approve or /unapprove after the anchor
+              // decides their vote — so a new push resets the tally. A
+              // maintainer's latest /block or /unblock decides the block, and
+              // it survives pushes.
               const votes = new Map();
               let blocked = false;
               for (const c of comments) {
-                if (!c.body || c.user?.type === "Bot") continue;
-                const when = new Date(c.created_at).getTime();
-                if (BLOCK.test(c.body) && CAN_BLOCK.has(c.author_association)) {
-                  blocked = true;
+                if (!c.body || !c.user || c.user.type === "Bot") continue;
+                if (CAN_BLOCK.has(c.author_association)) {
+                  if (BLOCK.test(c.body)) blocked = true;
+                  else if (UNBLOCK.test(c.body)) blocked = false;
                 }
-                if (when < headTime) continue;
+                if (new Date(c.created_at).getTime() < anchor) continue;
                 if (c.user.login === pr.user.login) continue; // not the author
                 if (APPROVE.test(c.body)) votes.set(c.user.login, true);
                 else if (UNAPPROVE.test(c.body)) votes.set(c.user.login, false);
               }
-              const approvers = [...votes.entries()].filter(([, v]) => v).map(([u]) => u);
+              const approvers = [];
+              const tooNew = [];
+              for (const [login, up] of votes) {
+                if (!up) continue;
+                if (await eligible(login)) approvers.push(login);
+                else tooNew.push(login);
+              }
               const count = approvers.length;
 
-              const ageHours = (Date.now() - new Date(pr.created_at).getTime()) / 3.6e6;
-              const cooled = ageHours >= COOLING_OFF_HOURS;
+              const cooledAt = anchor + COOLING_OFF_HOURS * 3.6e6;
+              const cooled = Date.now() >= cooledAt;
+              const hoursLeft = Math.max(1, Math.ceil((cooledAt - Date.now()) / 3.6e6));
 
               let state, description;
               if (blocked) {
@@ -87,10 +175,9 @@ jobs:
               } else if (count >= QUORUM && cooled) {
                 state = "success";
                 description = `${count}/${QUORUM} approvals — canon`;
-              } else if (count >= QUORUM && !cooled) {
+              } else if (count >= QUORUM) {
                 state = "pending";
-                const left = Math.ceil(COOLING_OFF_HOURS - ageHours);
-                description = `${count}/${QUORUM} approvals — cooling off ~${left}h`;
+                description = `${count}/${QUORUM} approvals — cooling off ~${hoursLeft}h`;
               } else {
                 state = "pending";
                 description = `${count}/${QUORUM} approvals`;
@@ -105,32 +192,51 @@ jobs:
                 `### Audience vote: ${count}/${QUORUM}`,
                 "",
                 blocked
-                  ? "This pull request is **blocked by a maintainer** and will not merge."
+                  ? "This pull request is **blocked by a maintainer** and will not merge until they `/unblock` it."
                   : count >= QUORUM && cooled
                     ? "Quorum reached. It merges as soon as the format check is green."
                     : count >= QUORUM
-                      ? `Quorum reached — merges after the cooling-off window (~${Math.ceil(COOLING_OFF_HOURS - ageHours)}h more).`
+                      ? `Quorum reached — merges after the cooling-off window (~${hoursLeft}h more).`
                       : `Comment \`/approve\` to vote it in. Need ${QUORUM - count} more.`,
                 "",
                 approvers.length ? `Approved by: ${approvers.map((u) => "@" + u).join(", ")}` : "_No approvals yet._",
+                tooNew.length
+                  ? `_Not counted (account younger than ${MIN_ACCOUNT_AGE_DAYS} days): ${tooNew.map((u) => "@" + u).join(", ")}_`
+                  : null,
                 "",
-                "_Anyone can `/approve`. A new commit resets the vote. `/unapprove` to withdraw._",
-              ];
+                `_Anyone with a GitHub account older than ${MIN_ACCOUNT_AGE_DAYS} days can \`/approve\`. A new push resets the vote and the ${COOLING_OFF_HOURS}h cooling-off. \`/unapprove\` to withdraw._`,
+              ].filter((line) => line !== null);
               const body = lines.join("\n");
 
-              const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+              const existing = comments.find(
+                (c) => c.user?.login === BOT && c.body && c.body.includes(MARKER),
+              );
               if (existing) {
                 await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
               } else {
                 await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
               }
+
+              // GitHub drops auto-merge when someone without write access
+              // pushes, and every contributor here is someone without write
+              // access. Keep it armed on every pass; it fires only when both
+              // required checks are green.
+              if (!blocked) await armAutoMerge(pr);
             }
 
             if (context.eventName === "schedule") {
               const prs = await github.paginate(github.rest.pulls.list, {
                 owner, repo, state: "open", base: "story", per_page: 100,
               });
-              for (const pr of prs) await evaluate(pr.number);
+              for (const pr of prs) {
+                try {
+                  await evaluate(pr.number);
+                } catch (error) {
+                  core.warning(`#${pr.number}: ${error.message}`);
+                }
+              }
+            } else if (context.eventName === "pull_request_target") {
+              await evaluate(context.payload.pull_request.number);
             } else {
               await evaluate(context.payload.issue.number);
             }
