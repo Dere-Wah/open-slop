@@ -1,6 +1,6 @@
 ---
 name: writing-a-scene
-description: Write or edit an OpenSlop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, and how to pass the format checker on the first try.
+description: Write or edit an OpenSlop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, how to write a prompt the video model renders well (self-contained, sound and quoted dialogue included, 200–800 characters), and how to pass the format checker on the first try.
 ---
 
 # Writing a scene
@@ -18,14 +18,14 @@ seed: 481516
 seconds: 8.0
 continue: false
 ---
-The first scene's prompt, in plain English…
+The first scene's prompt, in plain English, 200 to 800 characters…
 
 ---
 seed: 481517
 seconds: 10.125
 continue: true
 ---
-Hard cut to the second scene's prompt…
+The second scene's prompt, describing the whole picture again…
 ```
 
 - An optional `# Title` heading on the first line, up to 120 characters. It is
@@ -75,7 +75,10 @@ what the model itself accepts.) Values are read strictly: `seed: 1e3`,
 10.125 10.833 11.542 12.25  12.958 13.667 14.375
 ```
 
-Pick another and the checker tells you the nearest two.
+Pick another and the checker tells you the nearest two. Use the short end,
+under 8 seconds, only for a transition, an establishing shot, or a reaction
+beat; a scene that carries a line of dialogue or an action needs 8 seconds or
+more. The clip ends when the time is up, mid-sentence if it must.
 
 ## `continue`
 
@@ -100,19 +103,82 @@ nothing before it.
 ## Write the prompt for a model that has no memory
 
 The video model reads **only the scene you are writing**. It never sees the
-other scenes. So every prompt must re-describe everything: the look from
-[STYLE.md](../../STYLE.md), the setting, who is in frame, the light, the mood.
-Leaving something out means it vanishes or mutates. Yes, this repeats across
-scenes. That repetition is what holds the film together.
+other scenes, and nothing is added to your prompt before it is rendered: no
+rewriting, no expansion, no hidden style. What you write is what it reads. So
+every prompt must re-describe everything: the look from
+[STYLE.md](../../STYLE.md), the setting, who is in frame, the light, the mood,
+the sound. Leaving something out means it vanishes or mutates. Yes, this repeats
+across scenes. That repetition is what holds the movie together.
 
-Other prompt rules:
+### Length
 
-- Up to **800 characters** per prompt (after collapsing whitespace). The checker
-  counts for you.
-- The model renders **sound with picture**. Name the ambience in a short clause.
-  When someone speaks, write the exact words in quotes and say how they sound.
-- Describe only what the camera sees and the microphone hears. No text overlays,
-  no scene numbers, no camera jargon the model cannot show.
+Between **200 and 800 characters**, measured after collapsing every run of
+whitespace (line breaks included) to one space; that collapsed text is exactly
+what the model receives, so the checker's count is the model's count. The cap is
+the model's hard limit. The floor is ours: a prompt that cannot name the look,
+the setting, the subject, the light, and the sound in 200 characters is not
+describing a scene. Aim for 500 to 700. The checker reports each scene's length
+in the pull request.
+
+### Order
+
+Write the prompt in this order; it is the order the model weighs it:
+
+1. The shot and the subject: wide, medium, close-up, extreme close-up, and who
+   or what is in it, described in full every time.
+2. The action: one thing happening.
+3. The setting.
+4. The camera: holding still, drifting forward, slowly pushing in. Plain words.
+5. The look and the light: the house look, then this scene's palette and where
+   the light comes from.
+6. The mood, in two or three words.
+7. The sound, always last, always present.
+
+### Sound and dialogue
+
+The model renders **sound with the picture, speech included**. A prompt that
+says nothing about sound comes out flat or with a noise the model invented.
+
+- End every prompt with a soundscape clause. `Sound: low surf, a buoy bell far
+  off, a faint electric hum.` Three or four sounds is plenty.
+- When someone speaks, write **who speaks**, the **exact words in quotes**, and
+  **how the voice sounds**:
+
+  ```
+  He speaks slowly in a low, tired, gravelly voice: "They only come when the
+  light is wrong."
+  ```
+
+  The model says the words you give it. `He mutters something` makes it invent
+  the something.
+- One line of dialogue per scene. A speech does not fit in ten seconds.
+- Silence is a sound: `No gulls, no bell.` tells the model what to leave out.
+
+### What not to write
+
+- Nothing the camera cannot see or the microphone cannot hear: no text on
+  screen, no titles, no scene numbers, no "cut to", no "as before" or "the same
+  as the last scene" (there is no last scene, as far as the model knows).
+- No film jargon. Say "the camera slowly pushes in", not "slow dolly in".
+- Plain punctuation: commas, full stops, colons, quotes.
+
+### A worked example
+
+```
+A close-up of the lighthouse keeper's face at the lamp-room window: an old man
+with a salt-white beard, deep lines around his eyes, a dark wool cap, and the
+high collar of a heavy blue coat. Flat 2D cel animation, thick black outlines,
+flat fills. Briny blues and fog greys, one side of his face washed warm
+lamp-yellow each time the great lens turns past behind him. He watches the grey
+sea below without blinking, then speaks slowly in a low, tired, gravelly voice:
+"They only come when the light is wrong." The camera holds on his face. Sound:
+wind hums against the glass, the lamp mechanism ticks in a steady rhythm, the
+surf is faint and far below.
+```
+
+Shot and subject, action, setting, look and light, dialogue with a named voice,
+camera, soundscape. 653 characters. Every scene in `0010-the-arrival.md` is
+built this way; copy the shape, not the words.
 
 ## Check it before you open the pull request
 

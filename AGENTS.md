@@ -18,7 +18,17 @@ matches the task before you write a line:
   the whole pull request if you do. Those are maintained by the project on this
   branch directly.
 - Read [`STYLE.md`](./STYLE.md) before writing a prompt. Every scene must
-  re-describe the whole look; the model has no memory of other scenes.
+  re-describe the whole look; the model has no memory of other scenes, and
+  nothing is added to a prompt before it is rendered.
+- A prompt is 200 to 800 characters of plain prose (aim for 500 to 700) and
+  ends with a sound clause. When someone speaks, name who speaks, give the
+  exact words in quotes, and say how the voice sounds; the model renders
+  speech and will invent words you do not give it. Describe only what the
+  camera sees and the microphone hears: no text on screen, no "cut to", no
+  film jargon. The full recipe is in
+  [`skills/writing-a-scene`](./skills/writing-a-scene/SKILL.md).
+- Describe a recurring character the way `STYLE.md` describes them, every
+  time. A new character goes into `STYLE.md` in the same pull request.
 - Run the validator before opening a pull request. It lives on the `code`
   branch: `python3 story-tools/validate.py <path-to-this-checkout>`.
 - Do not edit the code that plays the film from here. It lives on the `code`

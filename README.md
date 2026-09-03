@@ -43,16 +43,22 @@ seed: 481516
 seconds: 8.0
 continue: false
 ---
-A wide shot of a fog-bound harbour at dawn, one lighthouse turning. Flat 2D cel
-animation, thick black outlines, briny blues. Gulls, a low bell, water on stone.
+A wide shot of a small fog-bound harbour town at dawn, one tall white lighthouse
+turning its beam slowly over flat grey water. Flat 2D cel animation, thick black
+outlines, flat fills. Briny blues and fog greys, warmed at the horizon by a low
+orange sun. The camera holds steady. Quiet and a little eerie. Sound: gulls cry
+far off, a buoy bell rings slow, small waves lap against the stone quay.
 
 ---
 seed: 481517
 seconds: 10.125
 ---
-A close-up of the keeper's face, half-lit by the turning lamp. Flat 2D cel
-animation, thick black outlines, briny blues. He says, low: "They only come when
-the light is wrong." Wind against glass.
+A close-up of the lighthouse keeper's face at the lamp-room window: an old man
+with a salt-white beard, a dark wool cap, and a heavy blue coat. Flat 2D cel
+animation, thick black outlines, flat fills. Briny blues, one side of his face
+washed lamp-yellow as the lens turns past. He speaks slowly in a low, tired,
+gravelly voice: "They only come when the light is wrong." The camera holds on
+his face. Sound: wind hums against the glass, the lamp mechanism ticks.
 ```
 
 A scene is a `---` header and a prompt.
@@ -63,9 +69,11 @@ A scene is a `---` header and a prompt.
 | `seconds` | yes | Clip length. One of the [legal lengths](#legal-lengths). |
 | `continue` | no | `true`: this scene starts from the last frame of the previous one. `false`: it starts fresh, after a cut to black. Default `true`. |
 
-The prompt is the scene, in plain English, up to 800 characters. The model sees
-**only this one prompt**, so describe the whole look every time. Read
-[STYLE.md](./STYLE.md) first.
+The prompt is the scene, in plain English, 200 to 800 characters. The model sees
+**only this one prompt**, exactly as written, so describe the whole look every
+time. It renders sound and speech too: end every prompt with what we hear, and
+when someone talks, give the exact words in quotes and say how the voice
+sounds. Read [STYLE.md](./STYLE.md) first; it has the recipe.
 
 **About `continue`.** Every continued scene is generated from a generated frame.
 A few in a row look great; a long chain of them slowly degrades. Drop a
