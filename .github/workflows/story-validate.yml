@@ -107,6 +107,31 @@ jobs:
             const report = fs.existsSync("report.txt")
               ? fs.readFileSync("report.txt", "utf8").trim() || "(no output)"
               : "(no output)";
+            // The validator prints GitHub Actions annotations so problems show
+            // inline on the diff; the same text reads badly in a comment. Turn
+            // each `::error file=F,line=N::message` into a list item, and let
+            // the passing report (plain prose with backticks) render as
+            // markdown.
+            function asMarkdown(text) {
+              const out = [];
+              for (const raw of text.split("\n")) {
+                const line = raw.trimEnd();
+                const m = /^::error (.*?)::(.*)$/.exec(line);
+                if (m) {
+                  const props = Object.fromEntries(m[1].split(",").map((kv) => kv.split("=")));
+                  const where = props.line ? `${props.file}:${props.line}` : props.file;
+                  out.push(`- \`${where}\` — ${m[2].replace(/`/g, "'")}`);
+                } else if (/^\d+ problem\(s\) found\.$/.test(line)) {
+                  continue;
+                } else if (line.startsWith("story OK:")) {
+                  out.push(`**${line}**`);
+                } else {
+                  out.push(line);
+                }
+              }
+              return out.join("\n").trim();
+            }
+            const problems = (report.match(/^::error /gm) || []).length;
             const sha = context.payload.pull_request.head.sha;
 
             await github.rest.repos.createCommitStatus({
@@ -121,15 +146,13 @@ jobs:
             const marker = "<!-- open-slop:validate -->";
             const body = [
               marker,
-              ok ? "### Format check passed" : "### Format check found problems",
+              ok ? "### ✅ Format check passed" : `### ❌ Format check found ${problems} problem(s)`,
               "",
-              "```",
-              report.slice(0, 60_000),
-              "```",
+              asMarkdown(report).slice(0, 60_000),
               "",
               ok
-                ? "Once enough people approve it (see the tally comment) and the wait after your last push has passed, it merges on its own."
-                : "Fix the problems above and push again; this re-runs automatically.",
+                ? "🗳️ Once enough people approve it (see the **Audience vote** comment) and the wait after your last push has passed, it merges on its own."
+                : "🔧 Fix the problems above and push again; this re-runs automatically.",
             ].join("\n");
 
             // The sticky comment is the bot's own. A contributor who pastes
@@ -206,6 +229,23 @@ jobs:
             const repo = context.repo.repo;
             const title = "The story branch does not validate";
             const marker = "<!-- open-slop:branch-tip -->";
+            // Same rendering as the pull-request comment: annotations become
+            // list items.
+            function asMarkdown(text) {
+              const out = [];
+              for (const raw of text.split("\n")) {
+                const line = raw.trimEnd();
+                const m = /^::error (.*?)::(.*)$/.exec(line);
+                if (m) {
+                  const props = Object.fromEntries(m[1].split(",").map((kv) => kv.split("=")));
+                  const where = props.line ? `${props.file}:${props.line}` : props.file;
+                  out.push(`- \`${where}\` — ${m[2].replace(/`/g, "'")}`);
+                } else if (!/^\d+ problem\(s\) found\.$/.test(line)) {
+                  out.push(line);
+                }
+              }
+              return out.join("\n").trim();
+            }
 
             const open = await github.paginate(github.rest.issues.listForRepo, {
               owner, repo, state: "open", creator: "github-actions[bot]", per_page: 100,
@@ -230,9 +270,7 @@ jobs:
               "The projector keeps airing the last good film until this is fixed; open a pull",
               "request that repairs the branch and vote it in.",
               "",
-              "```",
-              report.slice(0, 60_000),
-              "```",
+              asMarkdown(report).slice(0, 60_000),
             ].join("\n");
             if (existing) {
               await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });

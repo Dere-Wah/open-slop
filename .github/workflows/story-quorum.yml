@@ -72,9 +72,9 @@ jobs:
             const BOT = "github-actions[bot]";
             const ANCHOR_CONTEXTS = new Set(["story/validate", "story/quorum"]);
             const MARKER = "<!-- open-slop:quorum -->";
-            // Screenshots live on the code branch; the story branch holds no
-            // binaries.
-            const ASSETS = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/code/assets`;
+            // The screenshot strip lives on the code branch; the story branch
+            // holds no binaries.
+            const HOW_TO_APPROVE = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/code/assets/how-to-approve.png`;
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -235,16 +235,10 @@ jobs:
                 "It is a normal GitHub review, three clicks:",
                 "",
                 "1. Open the **Files changed** tab at the top of this pull request.",
-                "",
-                `   <img src="${ASSETS}/approve-1-files-changed.png" alt="The Files changed tab" width="720">`,
-                "",
                 "2. Click the green **Submit review** button on the right.",
-                "",
-                `   <img src="${ASSETS}/approve-2-submit-review.png" alt="The Submit review button" width="720">`,
-                "",
                 "3. Pick **Approve**, then **Submit review**.",
                 "",
-                `   <img src="${ASSETS}/approve-3-choose-approve.png" alt="Choose Approve, then Submit review" width="720">`,
+                `<img src="${HOW_TO_APPROVE}" alt="1: the Files changed tab. 2: the Submit review button. 3: choose Approve." width="900">`,
                 "",
                 "### 📏 The rules",
                 `- 👤 Anyone with a GitHub account older than **${MIN_ACCOUNT_AGE_DAYS} days** can approve. Comments do not count as votes.`,
