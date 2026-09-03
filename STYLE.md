@@ -34,6 +34,10 @@ seen them before.
   hostile yet.
 - **The town**: a handful of low stone houses, moored fishing boats, a leaning
   wooden water tower. Mostly empty; the town is a mood, not a crowd.
+- **The thing under the water**: never shown. Only what it does to the sea: a
+  long slow swell where no wave should be, a dark mass moving beneath the
+  surface too big to see the edges of, boats rocking, mooring ropes straining.
+  Do not give it a shape, a face, or a name until a scene earns the reveal.
 
 Add to the cast in a new episode. Once a character lands, describe them the
 same way in every later scene, and add them here in a pull request so the next
