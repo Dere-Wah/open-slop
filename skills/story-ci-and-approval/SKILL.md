@@ -25,7 +25,7 @@ maintainer commit on `story` (admins bypass the ruleset for exactly this), made
 | Workflow | Trigger | Posts |
 | --- | --- | --- |
 | `story-validate` | `pull_request_target` on `story`; `push` to `story` | commit status `story/validate`; sticky comment with the report; on push, an issue when the tip does not validate |
-| `story-quorum` | `issue_comment` (created/edited/deleted); `pull_request_target` opened/reopened/synchronize; cron every 10 minutes (so the wait after the last push is honoured to the minute, not the hour) | commit status `story/quorum`; sticky tally comment; keeps auto-merge armed |
+| `story-quorum` | `issue_comment` (created/edited/deleted); `pull_request_target` opened/reopened/synchronize; cron every 5 minutes (the review event cannot be used from forks; see below) | commit status `story/quorum`; sticky tally comment; keeps auto-merge armed |
 | `story-welcome` | `pull_request_target` opened | one greeting comment with the rules |
 
 Both statuses are **required checks** in the `story` ruleset, with GitHub
@@ -55,26 +55,43 @@ skills describe the mechanism and tell readers to look at the bot's tally
 comment for the current values, so tuning them is a one-line change with no
 docs to chase. Do not copy the values into prose anywhere.
 
-**The anchor.** A vote counts only if cast after the head was pushed. The push
-time is **not** read from the commit — committer dates are attacker-controlled,
-and a backdated amend would carry old approvals onto new content. It is the
-`created_at` of the earliest `story/validate` or `story/quorum` status the bot
-posted on the head sha: GitHub timestamps that server-side when the push
-triggered a run. Votes in the seconds between push and first status are lost,
-which is the safe direction. With no status yet (first run on a new head) the
-anchor is *now*, so nothing pre-push counts. This is why `story-quorum` also
-runs on `synchronize`: it plants the anchor on every new head immediately.
+**The vote is a GitHub review, counted by us.** Anyone can submit an *Approve*
+review on a public repository; GitHub shows it with a grey check and does not
+count it toward its native required-reviews rule (write access only). The
+ruleset therefore requires **0** native approvals and the bot's `story/quorum`
+status is the gate. The bot reads `pulls.listReviews`.
 
-**The tally.** Walk every comment on the pull request:
+**Why the bot cannot run on the review event.** `pull_request_review` from a
+fork runs with a **read-only** `GITHUB_TOKEN` (and from the fork's copy of the
+workflow file), and every contributor here is a fork. So the workflow does not
+listen to it at all. The tally is refreshed by `issue_comment` (any comment),
+`pull_request_target` (pushes) and a `*/5` cron. An approval is therefore
+visible within ~5 minutes or on the next comment. Do not "fix" this by adding
+the review event — it cannot post a status.
 
-- Skip bots and the author. Skip anything created before the anchor.
-- `/approve` sets the voter's vote to yes; `/unapprove` to no. The latest wins.
+**What counts as a vote.** A review's `commit_id` must equal the pull request's
+current head. GitHub records it server-side, so a push after approvals were
+gathered drops them all, and nothing a contributor writes can carry an old
+approval onto new content. This replaces any timestamp anchoring for votes.
+
+**The tally.** Walk every review on the pull request, in submission order:
+
+- Skip bots and the author. Skip reviews whose `commit_id` is not the head.
+- `APPROVED` sets the reviewer's vote to yes; `CHANGES_REQUESTED` or
+  `DISMISSED` to no. The latest wins. `COMMENTED` reviews are ignored.
 - A voter counts only if their account is a `User` at least
   `MIN_ACCOUNT_AGE_DAYS` old (`users.getByUsername`, cached per run). Voters
   who fail this are listed in the tally so the missing vote is explained.
-- `/block` from an `OWNER`/`MEMBER`/`COLLABORATOR` blocks; `/unblock` from one
-  lifts it. The latest wins. A block is **not** subject to the anchor; it
-  survives pushes.
+- `/block` from an `OWNER`/`MEMBER`/`COLLABORATOR` **comment** blocks;
+  `/unblock` from one lifts it. The latest wins. A block survives pushes.
+  Comments are otherwise not votes.
+
+**The wait anchor.** The wait after the last push is **not** read from the
+commit — committer dates are attacker-controlled. It is the `created_at` of the
+earliest `story/validate` or `story/quorum` status the bot posted on the head
+sha: GitHub timestamps that server-side when the push triggered a run. With no
+status yet (first run on a new head) the anchor is *now*. This is why
+`story-quorum` runs on `synchronize`: it plants the anchor on every new head.
 
 **The status.** `failure` "blocked by a maintainer"; `success` when
 `count ≥ QUORUM` and `now ≥ anchor + COOLING_OFF_MINUTES`; otherwise `pending`
@@ -91,7 +108,7 @@ what auto-merge would have done. Squash is load-bearing: one contribution is
 one commit, and per-scene credit reads the squash commit's author and its
 `Co-authored-by` trailers.
 
-**Robustness.** The ten-minute sweep evaluates every open pull request in its own
+**Robustness.** The five-minute sweep evaluates every open pull request in its own
 `try/catch`, so one 404 does not abort the rest. `concurrency` serialises runs
 per pull request.
 
@@ -140,7 +157,7 @@ There is no local runner that reproduces `pull_request_target`. What works:
    exactly this; `actionlint` when available adds expression checks).
 2. Push the change to a scratch repository with the same two-branch layout,
    open a pull request from a **fork** account, and walk the path: report
-   comment appears; `/approve` from a fresh account is listed as too new;
+   comment appears; an approving review from a fresh account is listed as too new;
    three eligible approvals go `pending — cooling off`; a push resets the tally
    and the clock; `/block` flips the status to failure; a merge fires only after
    the window.
