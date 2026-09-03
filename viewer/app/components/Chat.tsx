@@ -196,23 +196,15 @@ export function Chat({
               Send
             </button>
           </div>
-          <p className="text-xs text-fg-muted">
-            {name ? (
-              <>
-                Chatting as <span className="font-semibold text-fg">{name}</span>
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => setPending("")}
-                  className="gh-link"
-                >
-                  change
-                </button>
-              </>
-            ) : (
-              <>You will be asked for a name the first time you send.</>
-            )}
-          </p>
+          {name && (
+            <p className="text-xs text-fg-muted">
+              Chatting as <span className="font-semibold text-fg">{name}</span>
+              {" · "}
+              <button type="button" onClick={() => setPending("")} className="gh-link">
+                change
+              </button>
+            </p>
+          )}
         </form>
       )}
 
