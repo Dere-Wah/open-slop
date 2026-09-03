@@ -30,7 +30,8 @@ GitHub. To write the film, stay here.
 0010-the-arrival.md        an episode (one file = one episode = many scenes)
 0020-the-signal.md
 0030-what-the-keeper-saw.md
-README.md                  the landing page and the how-to-contribute guide
+README.md                  the landing page: what this is and the rules in brief
+CONTRIBUTING.md            add or edit a scene in three steps, by hand or by agent (maintained by the project)
 STYLE.md                   the show bible — the look, the world, the cast
 LICENSE                    CC BY-SA 4.0, for the writing
 AGENTS.md                  points coding agents at these guides (maintained by the project)

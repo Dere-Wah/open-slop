@@ -21,6 +21,8 @@ approve it the way they would review code. Reach the bar and it merges on its
 own — no maintainer in the loop. Your scene is on air in the next screening,
 with your name on screen.
 
+<p align="center"><b><a href="./CONTRIBUTING.md">✍&nbsp;&nbsp;Add a scene in three steps</a></b> · or hand it to a coding agent, the same page says how</p>
+
 ## Running on Reactor
 
 Every frame on air is generated the moment you see it. The projector hands each
@@ -88,7 +90,8 @@ rename. That is the whole system.
 ## Get it merged
 
 1. Your pull request may touch only `NNNN-title.md` files and `README.md`,
-   `STYLE.md`, `LICENSE`. No folders, nothing else.
+   `STYLE.md`, `LICENSE`. No folders, nothing else (`CONTRIBUTING.md`,
+   `AGENTS.md`, and `skills/` are maintained by the project).
 2. A bot checks the format and comments where your episode lands and how long
    the movie now runs.
 3. Anyone can approve it like any pull request: **Files changed → Review
@@ -121,6 +124,8 @@ Pick another and the bot tells you the nearest two.
 
 ## Around here
 
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — add or edit a scene in three steps,
+  by hand or with an agent.
 - [`STYLE.md`](./STYLE.md) — the show bible.
 - [`skills/`](./skills) — guides: the repository map, writing a scene, how
   approval works. [`AGENTS.md`](./AGENTS.md) points coding agents at them.
