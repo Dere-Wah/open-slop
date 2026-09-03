@@ -52,6 +52,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | --- | --- |
 | `projector/` | The Python projector: reads the story, drives the model, publishes to LiveKit. |
 | `projector/story.py` | Mirrors the story branch and credits each scene by `git blame` (plus `Co-authored-by`). |
+| `projector/logins.py` | Turns a commit into its GitHub login through the commits API, cached beside the mirror, so credits show faces even when the commit email is not a noreply. `GITHUB_TOKEN` raises the rate limit. |
 | `projector/screening.py` | The queue's only writer: snapshots a screening into a reel, feeds and chains scenes, holds the curtain until the opening is built, restarts on a lost session. |
 | `projector/broadcast.py` | The 1 Hz cursor (`warming` / `loading` / `downtime` / `live`) and the per-screening rundown in room metadata. |
 | `projector/reactor_link.py` | The one model session, with `session_ready` / `session_lost` events. |

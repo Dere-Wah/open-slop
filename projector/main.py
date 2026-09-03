@@ -76,6 +76,7 @@ async def main() -> None:
         branch=config.story_branch,
         mirror_dir=config.story_mirror_dir,
         html_url=config.story_html_url,
+        github_token=config.github_token,
     )
     broadcast = Broadcast(publisher)
     screening = Screening(link, story, broadcast)

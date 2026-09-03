@@ -62,13 +62,37 @@ function film(count: number): Rundown {
   };
 }
 
-export function PreviewApp({ state, episodes }: { state: string; episodes: number }) {
-  const rundown = useMemo(() => film(episodes), [episodes]);
-  const [chat, setChat] = useState<ChatEntry[]>([
+const CHATTER = [
+  ["mira", "the lighthouse shot is gorgeous"],
+  ["kb", "who wrote scene 2?? that eye"],
+  ["tomasz", "seed 481517 again please, that one was perfect"],
+  ["ren", "https://github.com/Dere-Wah/open-slop/pull/41 is up, needs one more approve"],
+  ["ada", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  ["mira", "ok the keeper's face in scene 3 is going to haunt me"],
+] as const;
+
+function chatter(count: number): ChatEntry[] {
+  const entries: ChatEntry[] = [
     { id: 1, author: "show", text: "Screening nº 12 is on air — 3 episodes, 1m 25s. Story at d5b84a2." },
-    { id: 2, author: "mira", text: "the lighthouse shot is gorgeous" },
-    { id: 3, author: "kb", text: "who wrote scene 2?? that eye" },
-  ]);
+  ];
+  for (let i = 0; entries.length < count; i++) {
+    const [author, text] = CHATTER[i % CHATTER.length];
+    entries.push({ id: entries.length + 1, author, text: i < CHATTER.length ? text : `${text} (${i})` });
+  }
+  return entries;
+}
+
+export function PreviewApp({
+  state,
+  episodes,
+  chatCount = 3,
+}: {
+  state: string;
+  episodes: number;
+  chatCount?: number;
+}) {
+  const rundown = useMemo(() => film(episodes), [episodes]);
+  const [chat, setChat] = useState<ChatEntry[]>(() => chatter(chatCount));
 
   const current = rundown.episodes[Math.min(1, rundown.episodes.length - 1)];
   const currentScene = current.scenes[Math.min(1, current.scenes.length - 1)];

@@ -24,8 +24,8 @@ import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/type
  *
  * It is laid out as a GitHub repository page — the `owner / repo` header
  * with its underline nav, then a two-column body: the
- * player, the now-playing bar, and the rundown on the left; About and the
- * chat on the right. Under `lg` the columns collapse into one and the three
+ * player, the now-playing bar, and the rundown on the left; chat and then
+ * About on the right. Under `lg` the columns collapse into one and the three
  * panels sit behind a segmented control below the player, so the film stays
  * on screen while a phone flips between the rundown, the chat, and the
  * about. One grid with named areas does both layouts, so every panel is
@@ -71,7 +71,7 @@ export function ShowPage({
     <div className="flex min-h-dvh flex-col">
       <RepoHeader repo={repo} sha={showState?.sha} onAir={onAir} connection={connection} />
 
-      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-4 [grid-template-areas:'player'_'bar'_'tabs'_'panel'] sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-6 lg:[grid-template-areas:'player_about'_'bar_about'_'rundown_chat'] xl:grid-cols-[minmax(0,1fr)_380px]">
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-4 px-4 py-4 [grid-template-areas:'player'_'bar'_'tabs'_'panel'] sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-6 lg:[grid-template-areas:'player_side'_'bar_side'_'rundown_side'] xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 [grid-area:player]">
           <Player
             videoTrack={videoTrack}
@@ -127,23 +127,24 @@ export function ShowPage({
           />
         </div>
 
-        <div
-          className={`min-w-0 [grid-area:panel] lg:[grid-area:chat] lg:sticky lg:top-4 lg:self-start ${
-            panel === "chat" ? "" : "hidden lg:block"
-          }`}
-        >
-          <Chat
-            entries={chat}
-            onSend={onSendChat}
-            connected={connection === "live"}
-            repo={repo}
-            className="h-[min(60dvh,440px)] lg:h-[560px]"
-          />
-        </div>
+        {/* Under lg the aside dissolves (display: contents) and chat and About
+            take the panel slot one at a time; from lg they stack in the side
+            column, chat first. */}
+        <aside className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4 lg:[grid-area:side]">
+          <div className={`min-w-0 [grid-area:panel] lg:[grid-area:auto] ${panel === "chat" ? "" : "hidden lg:block"}`}>
+            <Chat
+              entries={chat}
+              onSend={onSendChat}
+              connected={connection === "live"}
+              repo={repo}
+              className="h-[min(60dvh,440px)] lg:h-[480px]"
+            />
+          </div>
 
-        <div className={`min-w-0 [grid-area:panel] lg:[grid-area:about] ${panel === "about" ? "" : "hidden lg:block"}`}>
-          <About repo={repo} rundown={rundown} state={showState} />
-        </div>
+          <div className={`min-w-0 [grid-area:panel] lg:[grid-area:auto] ${panel === "about" ? "" : "hidden lg:block"}`}>
+            <About repo={repo} rundown={rundown} state={showState} />
+          </div>
+        </aside>
       </main>
 
       <footer className="border-t border-line">

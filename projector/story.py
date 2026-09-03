@@ -31,6 +31,7 @@ if str(_STORY_TOOLS) not in sys.path:
     sys.path.insert(0, str(_STORY_TOOLS))
 
 import validate  # noqa: E402  (path set above)
+from logins import LoginResolver  # noqa: E402
 from validate import Film, StoryError  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -120,11 +121,19 @@ class StorySource:
         branch: str,
         mirror_dir: Path,
         html_url: str,
+        github_token: str | None = None,
     ) -> None:
         self._repo = repo
         self._branch = branch
         self._dir = Path(mirror_dir).expanduser()
         self._html_url = html_url.rstrip("/")
+        # A real commit email carries no login; GitHub's commits API does. The
+        # answers live beside the mirror so a restart does not ask again.
+        self._logins = LoginResolver(
+            self._html_url,
+            cache_path=self._dir.with_name(self._dir.name + "-logins.json"),
+            token=github_token,
+        )
 
     # ------------------------------------------------------------ git plumbing
 
@@ -266,6 +275,7 @@ class StorySource:
                 rundown.scenes.append(card)
                 global_index += 1
             rundown.episodes.append(r_episode)
+        self._logins.flush()
 
         rundown.total_seconds = film.total_seconds
         logger.info(
@@ -289,7 +299,9 @@ class StorySource:
 
         The primary author is the newest commit over the range; contributors
         are the distinct authors across it, newest first, followed by every
-        `Co-authored-by` a squash merge recorded on those commits. A range
+        `Co-authored-by` a squash merge recorded on those commits. A login
+        comes off a noreply email when there is one, else from GitHub's
+        record of the commit (see logins.py). A range
         with no blame (a brand-new file blamed before its blob is local)
         yields an unknown author rather than an error.
         """
@@ -313,7 +325,12 @@ class StorySource:
 
         for sha in shas:
             info = meta.get(sha, {})
-            add(_person_from_commit(info.get("name", "unknown"), info.get("mail", "")))
+            person = _person_from_commit(info.get("name", "unknown"), info.get("mail", ""))
+            if person.login is None:
+                login = self._logins.login_for_commit(sha)
+                if login:
+                    person = Person(name=person.name, login=login, url=f"https://github.com/{login}")
+            add(person)
         for sha in shas:
             for person in self._coauthors(sha, coauthor_cache):
                 add(person)

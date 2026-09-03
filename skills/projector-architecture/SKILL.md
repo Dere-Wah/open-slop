@@ -21,6 +21,7 @@ story.py ──▶ screening.py ──▶ reactor_link.py ──▶ (model) ─�
 | Module | Owns |
 | --- | --- |
 | `story.py` | A blobless mirror of the story branch. Parses the film with `story-tools/validate.py`, credits each scene by `git blame` over its prompt lines, collects `Co-authored-by` trailers. Every git call has a timeout. |
+| `logins.py` | Commit sha → GitHub login via `GET /repos/{owner}/{repo}/commits/{sha}`, only when the story URL is on github.com. A noreply email already carries the login; this covers the real-address commits. Cache is `<mirror>-logins.json` (hits kept for good, misses retried after a day). Anonymous budget is 60/h, `GITHUB_TOKEN` gives 5000; on a limit or network error it stops asking for the rest of the reading and credits by name. |
 | `screening.py` | The queue's only writer. Snapshots the film into a `Reel`, keeps the model fed, holds the curtain until enough is built, tags each clip, turns model events into broadcast state. |
 | `reactor_link.py` | The one model session: connects, reconnects, sends commands, fans out model messages plus two synthetic events, `session_ready` and `session_lost`. Exposes `built_seconds` and `set_autoplay()`. |
 | `broadcast.py` | What the viewer sees: the cursor, the status (`warming`, `loading`, `downtime`, `live`), and the rundown, cut to fit LiveKit's metadata cap. |

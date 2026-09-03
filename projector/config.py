@@ -51,6 +51,7 @@ class Config:
     story_branch: str
     story_mirror_dir: str
     story_html_url: str
+    github_token: str | None  # raises the credits lookup rate limit; optional
 
     @staticmethod
     def load() -> "Config":
@@ -70,6 +71,7 @@ class Config:
             story_mirror_dir=os.environ.get("STORY_MIRROR_DIR", _DEFAULT_MIRROR),
             story_html_url=os.environ.get("STORY_HTML_URL", "").strip()
             or _derive_html_url(story_repo),
+            github_token=os.environ.get("GITHUB_TOKEN", "").strip() or None,
         )
         if not config.reactor_api_key:
             raise SystemExit("REACTOR_API_KEY is required (rk_... from the dashboard).")
