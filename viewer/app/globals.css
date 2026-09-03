@@ -175,6 +175,32 @@ button:disabled {
     opacity: 0.6;
   }
 
+  /* An action menu in the Primer idiom: an overlay list of items with a heading. */
+  .gh-menu {
+    @apply rounded-[12px] border py-2 text-sm;
+    background: var(--color-canvas-overlay);
+    border-color: var(--color-line);
+    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
+  }
+  .gh-menu-heading {
+    @apply px-3 pb-1 pt-0.5 text-xs font-semibold;
+    color: var(--color-fg-muted);
+  }
+  .gh-menu-divider {
+    @apply my-2 h-px;
+    background: var(--color-line);
+  }
+  .gh-menu-item {
+    @apply mx-2 flex w-[calc(100%-1rem)] items-center gap-2.5 rounded-[6px] px-2 py-1.5 text-left;
+    color: var(--color-fg);
+  }
+  .gh-menu-item:hover,
+  .gh-menu-item:focus-visible {
+    background: var(--color-canvas-subtle);
+    text-decoration: none;
+    outline: none;
+  }
+
   .gh-topic {
     @apply inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium;
     background: var(--color-accent-subtle);

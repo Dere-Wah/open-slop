@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AgentButton } from "./AgentButton";
 import {
   BookIcon,
   GitBranchIcon,
@@ -121,6 +122,7 @@ export function RepoHeader({
               <StarIcon className="text-fg-muted" />
               <span>Star</span>
             </a>
+            <AgentButton repo={repo} />
           </div>
         </div>
 
