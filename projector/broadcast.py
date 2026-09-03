@@ -13,12 +13,16 @@ build may not be ready the instant the last clip ends — after a short grace, s
 the seamless handover between two chained clips, where `clip_finished` and the
 next `clip_started` arrive milliseconds apart, never flickers.
 
-The cursor has three statuses. `live` is a scene on air. `warming` is the time
-before the first clip of the process, or while the story cannot be read; the
-packet carries a `detail` line saying which. `downtime` is the model's session
-having been lost: everything queued died with it, and the screening that was on
-air will play again from the top once the model is back. The viewer shows each
-as what it is rather than a frozen countdown.
+The cursor has four statuses. `live` is a scene on air. `warming` is the time
+before the model has answered, or while the story cannot be read; the packet
+carries a `detail` line saying which. `loading` is the curtain: the model is
+connected and building the screening's opening clips, and nothing plays until
+enough film is buffered that playout cannot outrun the builds; the packet
+carries how much is built against the target so the viewer can draw it.
+`downtime` is the model's session having been lost: everything queued died
+with it, and the screening that was on air will play again from the top once
+the model is back — through `loading` again. The viewer shows each as what it
+is rather than a frozen countdown.
 
 The **rundown** — every scene, its length, and everyone who wrote it — is large
 and changes once a screening, so it goes into LiveKit room metadata. Room
@@ -77,13 +81,28 @@ class Cursor:
     next_sha: str | None = None  # the sha the next screening was snapshotted at, if known
 
 
+@dataclass
+class Loading:
+    """The curtain: how much of the screening's opening is built so far."""
+
+    screening: int
+    sha: str
+    episode_title: str  # the film's first episode, what the screening opens on
+    buffered_seconds: float  # film built and waiting in the playout queue
+    target_seconds: float  # what must be built before the first frame goes out
+    film_seconds: float
+    scene_total: int
+    restart: bool  # this screening was on air and is starting over
+
+
 class Broadcast:
     """Publish the 1 Hz cursor and the per-screening rundown to the room."""
 
     def __init__(self, publisher: LiveKitPublisher) -> None:
         self._pub = publisher
         self._cursor: Cursor | None = None
-        self._status = "warming"  # warming | downtime | live
+        self._loading: Loading | None = None
+        self._status = "warming"  # warming | loading | downtime | live
         self._notice: str | None = None
         self._stall_since: float | None = None
         self._pending: tuple[int, Rundown] | None = None
@@ -94,6 +113,7 @@ class Broadcast:
     def update(self, cursor: Cursor) -> None:
         """Anchor the countdown to a freshly started clip."""
         self._cursor = cursor
+        self._loading = None
         self._status = "live"
         self._notice = None
         self._stall_since = None
@@ -103,9 +123,18 @@ class Broadcast:
         if self._stall_since is None:
             self._stall_since = time.time()
 
+    def mark_loading(self, loading: Loading) -> None:
+        """The curtain is down: the opening is being built; say how far along."""
+        self._cursor = None
+        self._loading = loading
+        self._status = "loading"
+        self._notice = None
+        self._stall_since = None
+
     def mark_downtime(self) -> None:
         """The model's session is gone; the screening will restart from the top."""
         self._cursor = None
+        self._loading = None
         self._status = "downtime"
         self._notice = None
         self._stall_since = None
@@ -133,6 +162,25 @@ class Broadcast:
     def _publish_cursor(self) -> None:
         now = time.time()
         cursor = self._cursor
+        loading = self._loading
+        if self._status == "loading" and loading is not None:
+            packet = {
+                "v": 1,
+                "topic": "state",
+                "status": "loading",
+                "screening": loading.screening,
+                "sha": loading.sha,
+                "episode_title": loading.episode_title,
+                "buffered_seconds": round(loading.buffered_seconds, 3),
+                "target_seconds": round(loading.target_seconds, 3),
+                "film_seconds": round(loading.film_seconds, 3),
+                "scene_total": loading.scene_total,
+                "restart": loading.restart,
+                "stalled": True,
+                "now": _ms(now),
+            }
+            self._pub.publish_state(packet)
+            return
         if cursor is None or self._status != "live":
             packet = {
                 "v": 1,

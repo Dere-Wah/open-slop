@@ -7,7 +7,7 @@ Wiring, in dependency order:
               │ time as the model's bounded queue has room — at its seed and
               │ length, chained where continue is true, tagged in metadata
               ▼
-        ReactorLink ◀──▶ fast-h3 (clip queue, autoplay on)
+        ReactorLink ◀──▶ fast-h3 (clip queue; autoplay off until the curtain)
               │ 24 fps video + 48 kHz mono audio
               ▼
             Pacer ──▶ LiveKitPublisher ──▶ the show's room (viewers)
@@ -21,6 +21,10 @@ reconnects — the room-side broadcast never restarts, it shows downtime while
 the model is away and the screening that was on air restarts from the top.
 The film itself, read from the story branch, keeps the projector fed: the
 branch is snapshotted once per screening, a fixed pre-roll before it airs.
+Every fresh session opens behind a curtain: nothing plays until about
+`CURTAIN_SECONDS` of the opening is built, and the broadcast reports the
+buffer filling as `loading` so the viewer can draw a pre-show instead of the
+first clip stuttering out ahead of the builds.
 
 Usage:
     cp .env.example .env      # keys, room, and the story repo

@@ -30,6 +30,16 @@ on air to its first scene, drops any reel queued after it, and — once the
 model is back — plays that screening again from the top. That is the promised
 behaviour, not a recovery heuristic: a reconnect means the screening restarts.
 
+Nothing plays until the curtain goes up. A session starts with autoplay off,
+so built clips wait in the playout queue; the projectionist watches how much
+film is built and only turns autoplay on once `CURTAIN_SECONDS` of it (or the
+whole film, if shorter) is sitting ready. Without that, the first clip would
+start the moment it was built and outrun the builds behind it — the stutter a
+cold start used to show. While the curtain is down the broadcast reports
+`loading` with the buffered-versus-target seconds, and the viewer draws the
+wait as a pre-show rather than a black frame. The curtain comes down again on
+every new session, which is what makes a restart after downtime clean.
+
 The projectionist also narrates. It reads its own metadata echo back off each
 `clip_started`, finds the reel and the scene, and hands the broadcaster a
 cursor: which scene is on air, who wrote it, how long until the film loops, and
@@ -45,7 +55,7 @@ import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 
-from broadcast import Broadcast, Cursor
+from broadcast import Broadcast, Cursor, Loading
 from reactor_link import SESSION_LOST, SESSION_READY, ReactorLink
 from story import Rundown, Scene, StorySource
 
@@ -58,6 +68,15 @@ logger = logging.getLogger(__name__)
 # floors it so a run of long scenes cannot leave the queue one clip deep.
 PREROLL_SECONDS = 60.0
 PREROLL_MIN_CLIPS = 3
+
+# The curtain: how much film must be *built* (finished clips waiting in the
+# playout queue) before autoplay is turned on for a fresh session. A film
+# shorter than this only needs to be built in full. Bounded by the playout
+# cap, so it must stay under `playout_capacity - _PLAY_HEADROOM` clips' worth.
+CURTAIN_SECONDS = 30.0
+# If the buffer cannot reach the target (refusals, a slow model) but something
+# is built, raise the curtain anyway after this long rather than hold forever.
+CURTAIN_MAX_WAIT_S = 180.0
 
 # Headroom kept under the model's own caps, so a built clip always has
 # somewhere to land and builds never pause on a full playout queue.
@@ -135,6 +154,13 @@ class Screening:
         # Seconds of the most recently enqueued scenes, so the pre-roll can be
         # measured in film time from the model's own queue counts.
         self._recent_seconds: deque[float] = deque(maxlen=64)
+        # The curtain: the session serial autoplay has been turned on for.
+        # Any other serial means the current session is still buffering.
+        self._autoplay_serial = -1
+        self._curtain_since: float | None = None
+        # Whether the screening behind the curtain was on air before and is
+        # starting over (a restart after downtime), for the viewer's wording.
+        self._restarting = False
         link.add_listener(self._on_model_message)
 
     # ------------------------------------------------------------------ reels
@@ -182,6 +208,10 @@ class Screening:
             rundown.sha,
             f"{self._pending_seconds():.0f}s",
         )
+        if self._on_air_reel() is reel and not any(r.on_air for r in self._reels.values()):
+            # Nothing is on air, so this reel is the one behind the curtain:
+            # the viewer can have its programme now rather than at first frame.
+            self._broadcast.set_rundown(reel.screening_id, reel.rundown)
         return reel
 
     def _prune_reels(self) -> None:
@@ -239,6 +269,7 @@ class Screening:
             if not self._link.connected:
                 await asyncio.sleep(1.0)
                 continue
+            await self._tend_curtain()
             if not self._room_for_more():
                 await asyncio.sleep(_POLL_S)
                 continue
@@ -248,6 +279,72 @@ class Screening:
                 continue
             scene = reel.scenes[reel.next_to_enqueue]
             await self._enqueue(reel, scene)
+
+    # ----------------------------------------------------------- the curtain
+
+    @property
+    def curtain_down(self) -> bool:
+        """Whether the current session is still buffering, autoplay off."""
+        return self._autoplay_serial != self._link.session_serial
+
+    def _curtain_target(self, reel: Reel) -> float:
+        """Seconds that must be built before this reel's first frame goes out."""
+        film = sum(scene.seconds for scene in reel.scenes)
+        # The playout queue can only hold so many finished clips; a target
+        # past what fits would wait forever. Measure the fit in this reel's
+        # own opening scenes.
+        slots = max(1, self._link.playout_capacity - _PLAY_HEADROOM)
+        fits = sum(scene.seconds for scene in reel.scenes[:slots])
+        return min(CURTAIN_SECONDS, film, fits)
+
+    async def _tend_curtain(self) -> None:
+        """While buffering, report progress; once enough is built, start playout."""
+        if not self.curtain_down:
+            return
+        reel = self._on_air_reel()
+        if reel is None:
+            # No reel yet (the story is unreadable); the notice says so.
+            return
+        now = time.time()
+        if self._curtain_since is None:
+            self._curtain_since = now
+        built = self._link.built_seconds
+        target = self._curtain_target(reel)
+        all_built = (
+            reel.fully_enqueued
+            and self._link.generation_queued == 0
+            and self._link.playout_queued > 0
+        )
+        overdue = built > 0 and now - self._curtain_since > CURTAIN_MAX_WAIT_S
+        self._broadcast.mark_loading(
+            Loading(
+                screening=reel.screening_id,
+                sha=reel.rundown.sha,
+                episode_title=_opening_title(reel),
+                buffered_seconds=built,
+                target_seconds=target,
+                film_seconds=sum(scene.seconds for scene in reel.scenes),
+                scene_total=len(reel.scenes),
+                restart=self._restarting,
+            )
+        )
+        if built + 1e-6 < target and not all_built and not overdue:
+            return
+        serial = self._link.session_serial
+        if not await self._link.set_autoplay(True):
+            logger.warning("[screening] could not turn autoplay on; retrying")
+            return
+        if serial != self._link.session_serial:
+            return  # the session turned over mid-command; the next one buffers again
+        self._autoplay_serial = serial
+        self._curtain_since = None
+        logger.info(
+            "[screening] curtain up for screening %d: %.1fs built of a %.1fs target%s",
+            reel.screening_id,
+            built,
+            target,
+            " (all built)" if all_built else " (overdue)" if overdue else "",
+        )
 
     async def _enqueue(self, reel: Reel, scene: Scene) -> None:
         """Enqueue one scene: seed, length, metadata, and the chain when asked."""
@@ -437,12 +534,14 @@ class Screening:
         """The model's queues are gone: restart the screening that was on air."""
         self._last_clip_id = None
         self._recent_seconds.clear()
+        self._curtain_since = None
         reel = self._on_air_reel()
         if reel is None:
             self._broadcast.mark_downtime()
             return
         for later in [r for r in self._reels if r > reel.screening_id]:
             del self._reels[later]
+        self._restarting = reel.on_air or bool(reel.started)
         reel.rewind()
         logger.warning(
             "[screening] model session lost; screening %d restarts from the top when it returns",
@@ -452,6 +551,7 @@ class Screening:
 
     def _on_started(self, tag: dict, clip: dict, reel: Reel | None, global_index: int) -> None:
         screening_id = int(tag.get("screening") or 0)
+        self._restarting = False
         if reel is not None:
             reel.started.add(global_index)
             if not reel.on_air:
@@ -507,6 +607,14 @@ class Screening:
             cursor.author,
         )
         self._broadcast.update(cursor)
+
+
+def _opening_title(reel: Reel) -> str:
+    """What the screening opens on: the first episode's title, else its file."""
+    if not reel.scenes:
+        return ""
+    first = reel.scenes[0]
+    return first.episode_title or first.episode_file
 
 
 def _parse_tag(clip: dict) -> dict | None:

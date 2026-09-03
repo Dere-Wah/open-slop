@@ -16,11 +16,16 @@
 
 The contract this speaks is the fast-h3 clip queue: `enqueue` replies
 `clip_queued`, builds cross into the playout queue on `clip_generated`, and
-with autoplay on (this streamer's mode) the front of the playout queue
-starts on its own the instant the stream idles. A scene enqueued with
-`continue_from_clip_id` opens on the named clip's last frame, and autoplay
-hands a continuing scene over seamlessly — no cut to black. That chaining
-is what turns an episode's scenes into one uninterrupted video.
+with autoplay on the front of the playout queue starts on its own the
+instant the stream idles. A scene enqueued with `continue_from_clip_id`
+opens on the named clip's last frame, and autoplay hands a continuing scene
+over seamlessly — no cut to black. That chaining is what turns an episode's
+scenes into one uninterrupted video.
+
+A session starts with autoplay **off**. The screening turns it on once
+enough film is built (`set_autoplay`), so the first frame a viewer sees is
+the start of a buffered run, not the first clip stuttering out ahead of the
+builds behind it.
 """
 
 from __future__ import annotations
@@ -128,6 +133,17 @@ class ReactorLink:
         return int(self.state.get("playout_capacity", 10))
 
     @property
+    def built_seconds(self) -> float:
+        """Film time sitting built in the playout queue, from the model's own list."""
+        total = 0.0
+        for clip in self.playout_clips:
+            try:
+                total += float(clip.get("seconds", 0.0))
+            except (TypeError, ValueError):
+                continue
+        return total
+
+    @property
     def canvas(self) -> tuple[int, int]:
         """(width, height) the deployment generates at."""
         return int(self.state["width"]), int(self.state["height"])
@@ -200,6 +216,17 @@ class ReactorLink:
             logger.warning("[reactor] %s failed: %s", command, error)
             return None
 
+    async def set_autoplay(self, enabled: bool) -> bool:
+        """Turn the model's autoplay on or off; True when the model confirmed it.
+
+        On, the playout queue's front clip starts the moment the stream idles
+        and a continuing clip is handed over with no cut. Off, built clips
+        wait in the playout queue — which is how the screening builds its
+        buffer before the first frame goes out.
+        """
+        reply = await self.send_command("set_autoplay", {"enabled": enabled})
+        return isinstance(reply, dict) and bool(reply.get("enabled")) == enabled
+
     # ----------------------------------------------------------- lifecycle
 
     async def run(self) -> None:
@@ -256,11 +283,10 @@ class ReactorLink:
             "supported" if self.supports_continuation else "unsupported",
         )
 
-        # Autoplay on: the model starts the playout queue's front clip the
-        # instant the stream idles, which keeps scene-to-scene gaps at
-        # milliseconds — and hands a continuing scene over with no cut at
-        # all. The streamer only decides what enters the queue and where.
-        await self._raw_command(reactor, "set_autoplay", {"enabled": True})
+        # Autoplay stays off here. The screening turns it on once it has
+        # buffered enough built film that playout will not outrun the builds;
+        # until then the model holds finished clips in its playout queue and
+        # the stream stays dark behind the viewer's curtain.
         self._session_serial += 1
         self._first_state.set()
         self._ready.set()
