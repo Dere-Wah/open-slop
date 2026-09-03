@@ -151,11 +151,7 @@ export function Chat({
               const isShow = entry.author === "show";
               return (
                 <li key={entry.id} className="flex items-start gap-2 text-sm leading-5">
-                  <Avatar
-                    name={isShow ? `@${repo.owner}` : entry.author}
-                    size={20}
-                    className="mt-0.5"
-                  />
+                  <Avatar name={isShow ? `@${repo.owner}` : entry.author} size={20} />
                   <p className="min-w-0 [overflow-wrap:anywhere]">
                     <span className={`font-semibold ${isShow ? "text-accent" : "text-fg"}`}>
                       {isShow ? repo.repo : entry.author}
@@ -266,15 +262,25 @@ function NameDialog({
   const [value, setValue] = useState(initial);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Focus and select the previous name once, when the dialog opens. This
+  // effect must not depend on anything that changes while the user types:
+  // the parent re-renders on every chat packet and hands down a fresh
+  // `onCancel`, and re-running `select()` then would grab the whole field
+  // under the caret on every keystroke.
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
+  }, []);
+
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape") cancelRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, []);
 
   return (
     <div
