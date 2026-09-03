@@ -169,14 +169,14 @@ export function Rundown({
           )}
           {rundown.truncated && (
             <span>
-              The movie is longer than fits here —{" "}
+              The movie is longer than fits here.{" "}
               <a
                 href={safeHttpUrl(rundown.story_url) ?? "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="gh-link"
               >
-                the rest is on the branch
+                The rest is on the branch
               </a>
               .
             </span>

@@ -73,7 +73,7 @@ const CHATTER = [
 
 function chatter(count: number): ChatEntry[] {
   const entries: ChatEntry[] = [
-    { id: 1, author: "show", text: "Screening nº 12 is on air — 3 episodes, 1m 25s. Story at d5b84a2." },
+    { id: 1, author: "show", text: "Screening nº 12 is on air: 3 episodes, 1m 25s. Story at d5b84a2." },
   ];
   for (let i = 0; entries.length < count; i++) {
     const [author, text] = CHATTER[i % CHATTER.length];

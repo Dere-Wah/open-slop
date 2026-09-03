@@ -61,7 +61,7 @@ export function About({
             <li>Open the pull request. Viewers approve it, and it airs.</li>
           </ol>
           <p className="mt-2 text-sm text-fg-muted">
-            No setup, all in the browser — or hand the page to a coding agent and let it do the
+            No setup, all in the browser. Or hand the page to a coding agent and let it do the
             work.
           </p>
           <a
@@ -80,7 +80,7 @@ export function About({
           <code className="rounded bg-canvas-overlay px-1 py-0.5 font-mono text-xs">{repo.branch}</code>{" "}
           branch of this repository, a projector renders every scene live on Reactor, and the movie
           plays here around the clock. Add a scene in a pull request, get it approved by other
-          viewers, and it is on air in the next screening — with your name on it.
+          viewers, and it is on air in the next screening, with your name on it.
         </p>
         <ul className="mt-3 flex flex-col gap-2 text-sm">
           <li className="flex items-center gap-2">
@@ -178,7 +178,7 @@ export function About({
           target="_blank"
           rel="noreferrer"
           className="group inline-flex items-center gap-2.5 text-sm hover:no-underline"
-          title="Reactor — the video model behind every scene"
+          title="Reactor, the video model behind every scene"
         >
           <ReactorMark size={32} className="shrink-0 rounded-full ring-1 ring-line" />
           <span>

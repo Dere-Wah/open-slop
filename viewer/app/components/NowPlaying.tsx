@@ -62,7 +62,7 @@ export function NowPlaying({
             {state.restart ? "Starting over." : "Preparing screening"}
             {!state.restart && typeof state.screening === "number" && <> nº {state.screening}.</>}
           </strong>{" "}
-          The opening is being built —{" "}
+          The opening is being built,{" "}
           <span className="text-fg">{left}s</span> of movie still to go.
         </span>
         <span className="gh-progress hidden w-40 sm:block" aria-hidden="true">

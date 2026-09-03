@@ -150,7 +150,7 @@ export function Chat({
           className="min-h-0 flex-1 overflow-y-auto px-3 py-2"
         >
           {entries.length === 0 && (
-            <p className="py-6 text-center text-sm text-fg-muted">No messages yet — say hello.</p>
+            <p className="py-6 text-center text-sm text-fg-muted">No messages yet. Say hello.</p>
           )}
           <ul className="flex flex-col gap-2">
             {entries.map((entry) => {

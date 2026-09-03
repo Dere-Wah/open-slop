@@ -134,7 +134,7 @@ function Tagline({
   programme: Rundown | null;
 }) {
   if (mode === "offair") {
-    return <>nobody is projecting right now — the screenplay is still open on GitHub</>;
+    return <>nobody is projecting right now. The screenplay is still open on GitHub</>;
   }
   if (mode === "downtime") {
     return <>we lost the model for a moment · this screening starts over from the top</>;
@@ -244,7 +244,7 @@ function Leader({
           </span>
         ) : (
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-            {mode === "offair" ? "—" : "…"}
+            {mode === "offair" ? "off" : "…"}
           </span>
         )}
       </div>

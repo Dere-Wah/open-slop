@@ -6,7 +6,7 @@ export function SetupRequired() {
       <div className="gh-box w-full max-w-lg">
         <div className="gh-box-header">
           <FilmIcon className="text-fg-muted" />
-          <h1 className="font-semibold">OpenSlop — almost there</h1>
+          <h1 className="font-semibold">OpenSlop: almost there</h1>
         </div>
         <div className="space-y-3 p-4 text-sm text-fg-muted">
           <p>
