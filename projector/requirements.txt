@@ -1,0 +1,5 @@
+reactor-sdk>=1.1.1
+numpy
+python-dotenv>=1.0
+livekit>=1.0
+livekit-api>=1.0

@@ -1,0 +1,42 @@
+# CI for the code branch: the validator's tests, the projector compiling, and
+# the viewer building. This is the `code-ci` check the code branch's ruleset
+# requires. It never runs on the story branch.
+name: code-ci
+
+on:
+  push:
+    branches: [code]
+  pull_request:
+    branches: [code]
+
+jobs:
+  story-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validator tests
+        run: python story-tools/test_validate.py
+      - name: Projector compiles
+        run: python -m py_compile projector/*.py story-tools/*.py
+
+  viewer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: viewer/pnpm-lock.yaml
+      - name: Install
+        working-directory: viewer
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: viewer
+        run: pnpm build

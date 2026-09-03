@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# Local operator notes for standing the GitHub repo up. Never committed —
+# it is a working checklist, not part of the project.
+GITHUB_SETUP.todo.md

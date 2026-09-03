@@ -1,0 +1,14 @@
+Open Slop
+Copyright 2026 the Open Slop contributors.
+
+This product includes software derived from the Reactor fast-h3 livestream
+example, Copyright 2024-2026 Reactor Technologies, Inc. (https://reactor.inc),
+used under the Apache License, Version 2.0.
+
+The projector and viewer in this repository (the `code` branch) are licensed
+under the Apache License, Version 2.0; see LICENSE.
+
+The screenplay (the `story` branch) is a separate work, licensed under
+Creative Commons Attribution-ShareAlike 4.0 International; see the LICENSE on
+that branch. Contributions to the story are contributions of writing, not of
+software.
