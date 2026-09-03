@@ -54,10 +54,11 @@ jobs:
       - name: Fetch the validator from the code branch
         uses: actions/checkout@v4
         with:
-          # TODO(GITHUB_SETUP): pin to a code-branch commit SHA once pushed, so
-          # the validator cannot drift from the reviewed one. `code` by name is
-          # fine to start; a SHA is the production form.
-          ref: code
+          # Pinned to a code-branch commit so the validator cannot drift from
+          # the reviewed one. Move this sha deliberately, after the change to
+          # story-tools/ has landed on `code` (see the code branch's
+          # skills/story-ci-and-approval).
+          ref: a4c1365587004d08b952c9dc1828796069f4b912
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false
@@ -172,7 +173,7 @@ jobs:
       - name: Fetch the validator from the code branch
         uses: actions/checkout@v4
         with:
-          ref: code
+          ref: a4c1365587004d08b952c9dc1828796069f4b912
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false
