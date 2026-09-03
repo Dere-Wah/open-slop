@@ -47,12 +47,18 @@ Actions as their only accepted source, so nobody can hand-post a green one.
 4. **`persist-credentials: false`** on every checkout; the token is never left
    on disk next to PR data.
 
-**The tally comment's screenshots** (how to click Approve) live in `assets/` on
-this branch and are embedded by URL:
-`raw.githubusercontent.com/<owner>/<repo>/code/assets/approve-{1,2,3}-*.png`.
-The story branch holds no binaries. Renaming or moving those files breaks the
-images in every open pull request's tally on the next refresh, so change the
-workflow and the files together.
+**The tally comment's screenshot strip** (how to click Approve) is
+`assets/how-to-approve.png` on this branch, embedded by URL:
+`raw.githubusercontent.com/<owner>/<repo>/code/assets/how-to-approve.png`. The
+story branch holds no binaries. Renaming or moving it breaks the image in every
+open pull request's tally on the next refresh, so change the workflow and the
+file together.
+
+**Validator output in comments.** The validator prints `::error file=…::msg`
+annotations under `GITHUB_ACTIONS` so problems show inline on the diff. Both
+`story-validate` comment steps run that text through `asMarkdown()`, which
+turns each annotation into a list item and drops the count line, so a reader
+never sees the `::error` syntax.
 
 ## The vote (`story-quorum`)
 

@@ -52,7 +52,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `story-tools/validate.py` | The one validator, shared by CI and the projector. |
 | `viewer/` | The Next.js viewer: player, overlay, countdown, rundown, chat. |
 | `skills/` | Guides for changing this branch: the projector, the format, the CI and vote. |
-| `assets/` | Screenshots the story bot embeds in its "Audience vote" comment (how to approve). Served raw from this branch. |
+| `assets/how-to-approve.png` | The three-step screenshot strip the story bot embeds in its "Audience vote" comment. Served raw from this branch. |
 | `AGENTS.md` | Points coding agents at the skills and states the rules that apply everywhere. |
 
 ## Run it locally
