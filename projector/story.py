@@ -265,7 +265,7 @@ class StorySource:
                     seed=scene.seed,
                     seconds=scene.seconds,
                     continued=scene.effective_continue,
-                    prompt=scene.body,
+                    prompt=scene.prompt,
                     author=author,
                     commit=commit[:7] if commit else "",
                     commit_url=commit_url,

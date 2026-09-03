@@ -15,16 +15,30 @@ import validate
 from validate import (
     LEGAL_SECONDS,
     MAX_FILENAME_CHARS,
+    MAX_PROMPT_CHARS,
     MAX_TITLE_CHARS,
+    MIN_PROMPT_CHARS,
     Change,
     build_film,
     parse_episode,
     validate_paths,
 )
 
-# A scene body reused across chained (continue: true) cases.
-_CUT = "A wide shot of a harbour at dawn. Gulls, a low bell."
-_FRESH = "A wide shot of a harbour at dawn, one lighthouse turning. Gulls, a bell."
+# Two legal prompts, each past the floor: a scene must carry the look, the
+# setting, who is in frame, the light, and the sound. `_CUT` is reused across
+# chained (continue: true) cases.
+_CUT = (
+    "A wide shot of a small fog-bound harbour town at dawn. Flat 2D cel animation, "
+    "thick black outlines, flat fills, briny blues and fog greys. Low houses and moored "
+    "boats sit still under a pale sky. Gulls cry, a buoy bell rings slow, water laps "
+    "against stone."
+)
+_FRESH = (
+    "A wide shot of a small fog-bound harbour town at dawn, one tall lighthouse turning "
+    "its beam over the water. Flat 2D cel animation, thick black outlines, flat fills, "
+    "briny blues and fog greys warmed by a low sun. Gulls cry, a buoy bell rings slow, "
+    "water laps against stone."
+)
 _LEN = LEGAL_SECONDS[5]  # a mid-range legal length
 
 
@@ -108,8 +122,8 @@ def test_body_range_excludes_surrounding_blank_lines():
             f"seconds: {_LEN}",
             "---",
             "",
-            "First line of prose.",
-            "Second line of prose.",
+            _CUT[:120],
+            _CUT[120:],
             "",
             "",
             "---",
@@ -198,6 +212,35 @@ def test_rejects_overlong_prompt():
     assert any("caps a scene at" in issue.message for issue in issues), _messages(issues)
 
 
+def test_rejects_too_short_prompt():
+    text = _episode(f"seed: 1\nseconds: {_LEN}", "A harbour at dawn. Gulls.")
+    _film_obj, issues = _film({"0010-a.md": text})
+    assert any("at least" in issue.message for issue in issues), _messages(issues)
+
+
+def test_prompt_length_is_measured_collapsed_and_at_the_bounds():
+    # Line breaks and runs of spaces count as one character each, because that
+    # is the form the projector sends. Exactly the floor and exactly the cap pass.
+    word = "abcd "  # 5 chars per word
+    floor = (word * (MIN_PROMPT_CHARS // 5)).strip()
+    assert len(floor) == MIN_PROMPT_CHARS - 1
+    floor = floor + "x"
+    cap = (word * (MAX_PROMPT_CHARS // 5)).strip() + "."
+    assert len(cap) == MAX_PROMPT_CHARS
+    spread = cap.replace(" ", "  \n   ")  # far over 800 raw, exactly 800 collapsed
+    text = _episode(f"seed: 1\nseconds: {_LEN}", floor, f"seed: 2\nseconds: {_LEN}", spread)
+    episode, issues = parse_episode("0010-a.md", text)
+    assert issues == [], _messages(issues)
+    assert episode is not None
+    assert len(episode.scenes[0].prompt) == MIN_PROMPT_CHARS
+    assert episode.scenes[1].prompt == cap
+    assert "\n" in episode.scenes[1].body and "\n" not in episode.scenes[1].prompt
+    # One character over the cap, once collapsed, fails.
+    text = _episode(f"seed: 1\nseconds: {_LEN}", cap + "x")
+    _film_obj, issues = _film({"0010-a.md": text})
+    assert any("caps a scene at" in issue.message for issue in issues), _messages(issues)
+
+
 def test_rejects_overlong_title_and_filename():
     text = _episode(f"seed: 1\nseconds: {_LEN}", _FRESH, title="t" * (MAX_TITLE_CHARS + 1))
     _episode_obj, issues = parse_episode("0010-a.md", text)
@@ -213,7 +256,7 @@ def test_continue_true_puts_no_constraint_on_the_prompt():
         f"seed: 1\nseconds: {_LEN}",
         _FRESH,
         f"seed: 2\nseconds: {_LEN}\ncontinue: true",
-        "The camera keeps following her down the hall.",
+        _CUT,
     )
     _film_obj, issues = _film({"0010-a.md": text})
     assert issues == [], _messages(issues)

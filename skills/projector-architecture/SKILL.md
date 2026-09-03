@@ -72,8 +72,11 @@ is visible rather than silent.
 When there is room, `_enqueue()` sends one scene: `prompt`, `seed`, `seconds`,
 a `metadata` tag naming the screening, the episode and scene indices, and the
 commit sha, and — when the scene's effective `continue` is true —
-`continue_from_clip_id` pointing at the previous clip. Prompts go to the model
-verbatim; there is no upsampling anywhere.
+`continue_from_clip_id` pointing at the previous clip. The prompt is
+`Scene.prompt` from the validator — the file's prose with whitespace collapsed
+to single spaces, the same string the 200–800 character rule was measured on —
+so what the author wrote is what the model reads, and the length CI accepted is
+the length the model accepts. There is no upsampling anywhere.
 
 Refusals are read from the model's `command_error` and handled by reason:
 

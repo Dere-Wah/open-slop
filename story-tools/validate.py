@@ -47,8 +47,15 @@ _FRAME_STEP = 17
 LEGAL_FRAMES = list(range(_MIN_FRAMES, _MAX_FRAMES + 1, _FRAME_STEP))
 LEGAL_SECONDS = [round(frames / FPS, 3) for frames in LEGAL_FRAMES]
 
-# The model's hard cap on one prompt, enforced server-side.
+# The prompt is measured as the projector sends it: the prose with every run
+# of whitespace (line breaks included) collapsed to one space. The cap is the
+# model's own, enforced server-side; an over-length prompt is refused at
+# enqueue, so it must never reach the branch. The floor is the film's: a scene
+# is generated from its prompt alone, so one that cannot name the look, the
+# setting, who is in frame, the light, and the sound in under this many
+# characters is not describing a scene. Both are hard errors, not warnings.
 MAX_PROMPT_CHARS = 800
+MIN_PROMPT_CHARS = 200
 
 # Caps on the two strings that ride the model's 2000-character metadata field
 # with every clip. Generous for a title; tight enough that no legal episode
@@ -110,6 +117,11 @@ def _annotation_safe(path: str) -> str:
 class Scene:
     """One clip: a prompt, a seed, a length, and how it joins the previous one.
 
+    `prompt` is the one string that leaves this module for the model: the prose
+    with every whitespace run collapsed to a single space. Its length is what
+    the min/max prompt rules measure, so the count the checker reports is the
+    count the model sees.
+
     `body_line_start` / `body_line_end` are 1-indexed lines in the source file,
     covering the prompt prose only — never the `---` header, and never the
     blank lines around the prose. The projector blames exactly that range to
@@ -121,7 +133,8 @@ class Scene:
     seed: int
     seconds: float
     declared_continue: bool | None
-    body: str
+    body: str  # the prose as written, line breaks kept
+    prompt: str  # what the model receives: `body` with whitespace collapsed
     body_line_start: int
     body_line_end: int
     # Filled once the whole film is known: the first scene of the film is
@@ -405,6 +418,7 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
         prose_lines = body_lines[first : last + 1]
         body = "\n".join(prose_lines).strip()
 
+        collapsed = " ".join(body.split())
         if not body:
             issues.append(Issue(name, close_line + 1, f"scene {len(scenes) + 1} has no prompt body"))
             prose_start = close_line + 1
@@ -412,14 +426,23 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
         else:
             prose_start = body_start + first + 1
             prose_end = body_start + last + 1
-            collapsed = " ".join(body.split())
             if len(collapsed) > MAX_PROMPT_CHARS:
                 issues.append(
                     Issue(
                         name,
                         prose_start,
                         f"prompt is {len(collapsed)} characters; the model caps a scene at "
-                        f"{MAX_PROMPT_CHARS}",
+                        f"{MAX_PROMPT_CHARS}. Cut adjectives before subjects, setting, or sound",
+                    )
+                )
+            elif len(collapsed) < MIN_PROMPT_CHARS:
+                issues.append(
+                    Issue(
+                        name,
+                        prose_start,
+                        f"prompt is {len(collapsed)} characters; a scene needs at least "
+                        f"{MIN_PROMPT_CHARS} to carry the look, the setting, who is in frame, "
+                        f"the light, and the sound (see STYLE.md)",
                     )
                 )
             for offset, line in enumerate(prose_lines):
@@ -441,6 +464,7 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
                 seconds=data.get("seconds", 0.0),
                 declared_continue=data.get("continue"),
                 body=body,
+                prompt=collapsed,
                 body_line_start=prose_start,
                 body_line_end=prose_end,
             )
@@ -661,10 +685,12 @@ def report(film: Film, changed_episodes: list[str]) -> str:
         previous = film.episodes[index - 1].path if index > 0 else "the top"
         following = film.episodes[index + 1].path if index + 1 < count else "the end"
         scene_word = "scene" if len(episode.scenes) == 1 else "scenes"
+        lengths = ", ".join(f"{len(scene.prompt)}" for scene in episode.scenes)
         lines.append(
             f"`{name}` lands as episode {index + 1} of {count}, between `{previous}` "
             f"and `{following}`. {len(episode.scenes)} {scene_word}, "
-            f"{format_duration(episode.seconds)}."
+            f"{format_duration(episode.seconds)}; prompt lengths {lengths} of "
+            f"{MAX_PROMPT_CHARS} characters."
         )
     lines.append(
         f"The film is now {format_duration(film.total_seconds)} across {count} "

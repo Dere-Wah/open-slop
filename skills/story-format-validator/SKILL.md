@@ -48,7 +48,18 @@ Per scene header, `key: value` lines only:
 Any other key is an error: a key nothing reads is a contributor believing they
 set something.
 
-Per prompt body: at most `MAX_PROMPT_CHARS` (800) after collapsing whitespace.
+Per prompt body: between `MIN_PROMPT_CHARS` (200) and `MAX_PROMPT_CHARS` (800)
+characters, measured on `Scene.prompt` — the prose with every whitespace run
+(line breaks included) collapsed to one space. That string is exactly what the
+projector enqueues, so the count the checker reports is the count the model
+sees; a prompt that passes here is never refused at enqueue for length. The cap
+is the model's own (`fast-h3` rejects longer prompts server-side and pads
+everything to 256 tokens, which 800 characters of prose stays well inside). The
+floor is the film's: the model sees one prompt and nothing else, so a scene
+that cannot name the look, the setting, who is in frame, the light, and the
+sound in under 200 characters is not describing a scene. Both are errors. The
+`--report` summary lists each changed episode's prompt lengths so a reviewer
+sees the headroom.
 The parser records `body_line_start` / `body_line_end` **trimmed of surrounding
 blank lines**; the projector blames exactly that range, so credit lands on the
 words and not on a stray empty line someone else added.
