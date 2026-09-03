@@ -3,8 +3,9 @@
 Wiring, in dependency order:
 
   story branch (git) ──▶ StorySource ──▶ Screening (the queue's only writer)
-              │ enqueue: one scene per file entry, at its seed and length,
-              │ chained where continue is true, tagged in metadata
+              │ snapshots the film into a reel, then enqueues one scene at a
+              │ time as the model's bounded queue has room — at its seed and
+              │ length, chained where continue is true, tagged in metadata
               ▼
         ReactorLink ◀──▶ fast-h3 (clip queue, autoplay on)
               │ 24 fps video + 48 kHz mono audio
@@ -16,9 +17,10 @@ Wiring, in dependency order:
 Everything is one asyncio process. The pacer and the publisher are created
 after the first `state_update` (that is where the deployment's canvas size
 comes from) and then live until shutdown, across any number of Reactor
-reconnects — the room-side broadcast never restarts. Default scenes are gone:
-the film itself, read from the story branch, keeps the projector fed, and it
-re-reads the branch at every loop.
+reconnects — the room-side broadcast never restarts, it shows downtime while
+the model is away and the screening that was on air restarts from the top.
+The film itself, read from the story branch, keeps the projector fed: the
+branch is snapshotted once per screening, a fixed pre-roll before it airs.
 
 Usage:
     cp .env.example .env      # keys, room, and the story repo

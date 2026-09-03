@@ -7,12 +7,16 @@ CI shim can prove the validator without installing pytest.
 
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 
 import validate
 from validate import (
     LEGAL_SECONDS,
+    MAX_FILENAME_CHARS,
+    MAX_TITLE_CHARS,
+    Change,
     build_film,
     parse_episode,
     validate_paths,
@@ -81,6 +85,49 @@ def test_continue_crosses_the_file_boundary():
     assert film.episodes[1].scenes[0].effective_continue is True
 
 
+def test_accepts_bom_and_crlf():
+    text = "\ufeff" + _episode(f"seed: 1\nseconds: {_LEN}", _FRESH).replace("\n", "\r\n")
+    episode, issues = parse_episode("0010-a.md", text)
+    assert issues == [], _messages(issues)
+    assert episode is not None and episode.title == "The Arrival"
+
+
+# ------------------------------------------------------------ blame range
+
+
+def test_body_range_excludes_surrounding_blank_lines():
+    # Line numbers (1-based):
+    # 1 # T | 2 (blank) | 3 --- | 4 seed | 5 seconds | 6 --- | 7 (blank)
+    # 8 prose | 9 prose | 10 (blank) | 11 (blank) | 12 --- ...
+    text = "\n".join(
+        [
+            "# T",
+            "",
+            "---",
+            "seed: 1",
+            f"seconds: {_LEN}",
+            "---",
+            "",
+            "First line of prose.",
+            "Second line of prose.",
+            "",
+            "",
+            "---",
+            "seed: 2",
+            f"seconds: {_LEN}",
+            "---",
+            _CUT,
+            "",
+        ]
+    )
+    episode, issues = parse_episode("0010-a.md", text)
+    assert issues == [], _messages(issues)
+    assert episode is not None
+    first, second = episode.scenes
+    assert (first.body_line_start, first.body_line_end) == (8, 9)
+    assert (second.body_line_start, second.body_line_end) == (16, 16)
+
+
 # ----------------------------------------------------------------- rejection
 
 
@@ -105,6 +152,17 @@ def test_rejects_missing_seed():
     assert any("missing the required key 'seed'" in issue.message for issue in issues), _messages(issues)
 
 
+def test_rejects_non_plain_seeds():
+    for bad in ("+5", "05x", "1_000", "1e3", "-1", "٣"):
+        text = _episode(f"seed: {bad}\nseconds: {_LEN}", _FRESH)
+        _film_obj, issues = _film({"0010-a.md": text})
+        assert any("seed must be a plain integer" in i.message for i in issues), (bad, _messages(issues))
+    # A leading zero is still a plain decimal integer.
+    text = _episode(f"seed: 007\nseconds: {_LEN}", _FRESH)
+    film, issues = _film({"0010-a.md": text})
+    assert issues == [] and film.episodes[0].scenes[0].seed == 7
+
+
 def test_rejects_illegal_seconds_and_suggests_neighbours():
     text = _episode("seed: 1\nseconds: 10", _FRESH)  # 10.0 is not legal
     _film_obj, issues = _film({"0010-a.md": text})
@@ -114,9 +172,10 @@ def test_rejects_illegal_seconds_and_suggests_neighbours():
 
 
 def test_rejects_non_boolean_continue():
-    text = _episode(f"seed: 1\nseconds: {_LEN}\ncontinue: maybe", _FRESH)
-    _film_obj, issues = _film({"0010-a.md": text})
-    assert any("continue must be true or false" in issue.message for issue in issues), _messages(issues)
+    for bad in ("maybe", "yes", "on", "1"):
+        text = _episode(f"seed: 1\nseconds: {_LEN}\ncontinue: {bad}", _FRESH)
+        _film_obj, issues = _film({"0010-a.md": text})
+        assert any("continue must be exactly true or false" in i.message for i in issues), bad
 
 
 def test_rejects_continue_true_on_the_first_scene():
@@ -125,10 +184,28 @@ def test_rejects_continue_true_on_the_first_scene():
     assert any("first scene cannot set continue" in issue.message for issue in issues), _messages(issues)
 
 
+def test_first_scene_rule_is_silent_when_an_earlier_file_failed():
+    broken = "# X\n\nno fence here\n"
+    later = _episode(f"seed: 1\nseconds: {_LEN}\ncontinue: true", _CUT)
+    _film_obj, issues = _film({"0010-a.md": broken, "0020-b.md": later})
+    assert any("expected a scene block" in i.message for i in issues), _messages(issues)
+    assert not any("first scene cannot set continue" in i.message for i in issues), _messages(issues)
+
+
 def test_rejects_overlong_prompt():
     text = _episode(f"seed: 1\nseconds: {_LEN}", "word " * 400)
     _film_obj, issues = _film({"0010-a.md": text})
     assert any("caps a scene at" in issue.message for issue in issues), _messages(issues)
+
+
+def test_rejects_overlong_title_and_filename():
+    text = _episode(f"seed: 1\nseconds: {_LEN}", _FRESH, title="t" * (MAX_TITLE_CHARS + 1))
+    _episode_obj, issues = parse_episode("0010-a.md", text)
+    assert any("title is" in i.message for i in issues), _messages(issues)
+    long_name = "0010-" + "a" * MAX_FILENAME_CHARS + ".md"
+    _episode_obj, issues = parse_episode(long_name, _episode(f"seed: 1\nseconds: {_LEN}", _FRESH))
+    assert any("filename is" in i.message for i in issues), _messages(issues)
+    assert any("filename is" in i.message for i in validate_paths([long_name]))
 
 
 def test_rejects_continue_true_without_a_hard_cut():
@@ -142,10 +219,22 @@ def test_rejects_continue_true_without_a_hard_cut():
     assert any("must open on a described hard cut" in issue.message for issue in issues), _messages(issues)
 
 
+def test_rejects_heading_inside_a_prompt():
+    text = _episode(f"seed: 1\nseconds: {_LEN}", "# Not a title\n" + _FRESH)
+    _film_obj, issues = _film({"0010-a.md": text})
+    assert any("cannot start with '#'" in i.message for i in issues), _messages(issues)
+
+
 def test_rejects_dangling_block_with_no_body():
     text = "# X\n\n---\nseed: 1\nseconds: %s\n---\n" % _LEN
     _film_obj, issues = _film({"0010-a.md": text})
     assert any("no prompt body" in issue.message for issue in issues), _messages(issues)
+
+
+def test_stray_fence_in_a_body_names_the_cause():
+    text = _episode(f"seed: 1\nseconds: {_LEN}", _FRESH + "\n---\nmore prose")
+    _film_obj, issues = _film({"0010-a.md": text})
+    assert any("'---'" in i.message for i in issues), _messages(issues)
 
 
 def test_rejects_empty_film():
@@ -153,21 +242,72 @@ def test_rejects_empty_film():
     assert any("no episode files found" in issue.message for issue in issues), _messages(issues)
 
 
+def test_rejects_a_symlinked_episode():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "0010-a.md").write_text(_episode(f"seed: 1\nseconds: {_LEN}", _FRESH), encoding="utf-8")
+        os.symlink(root / "0010-a.md", root / "0020-b.md")
+        _film_obj, issues = build_film(root)
+        assert any("symlink" in i.message for i in issues), _messages(issues)
+        assert validate_paths([Change("0020-b.md", "added")], root)
+
+
 # ------------------------------------------------------------- path allowlist
 
 
 def test_path_allowlist_accepts_episodes_and_named_docs():
     assert validate_paths(["0010-a.md", "README.md", "STYLE.md", "LICENSE"]) == []
+    assert validate_paths(["./0010-a.md"]) == []
 
 
 def test_path_allowlist_rejects_subdirectories_and_workflows():
     issues = validate_paths([".github/workflows/story-validate.yml"])
     assert issues and "subdirectory" in issues[0].message
+    assert validate_paths(["skills/README.md"])
 
 
 def test_path_allowlist_rejects_a_stray_root_file():
     issues = validate_paths(["hack.py"])
     assert issues and "not an allowed story file" in issues[0].message
+    assert validate_paths([".github"])
+    assert validate_paths([".gitattributes"])
+
+
+def test_path_allowlist_refuses_dressed_up_paths():
+    for bad in ("..README.md", ".LICENSE", ".0010-x.md", "0010-x.md ", " 0010-x.md",
+                "0010-x.md\n", "../0010-x.md", "/0010-x.md", "0010\\x.md", "./"):
+        assert validate_paths([bad]), repr(bad)
+
+
+def test_path_allowlist_blocks_deleting_or_renaming_the_root_documents():
+    for name in ("README.md", "STYLE.md", "LICENSE"):
+        assert validate_paths([Change(name, "removed")]), name
+        assert validate_paths([Change(name, "renamed", "0010-x.md")]), name
+        assert validate_paths([Change(name, "modified")]) == [], name
+
+
+def test_path_allowlist_judges_renames_by_their_source():
+    # Renumbering an episode is fine.
+    assert validate_paths([Change("0015-b.md", "renamed", "0020-b.md")]) == []
+    # Pulling anything else into an episode name is not — a rename reported
+    # only by its new name would otherwise walk a workflow out of .github/.
+    assert validate_paths([Change("0040-x.md", "renamed", ".github/workflows/story-quorum.yml")])
+    assert validate_paths([Change("0040-x.md", "renamed", "skills/README.md")])
+    assert validate_paths([Change("0040-x.md", "renamed", "README.md")])
+    assert validate_paths([Change("0040-x.md", "renamed", None)])
+
+
+def test_path_allowlist_allows_deleting_an_episode():
+    assert validate_paths([Change("0020-b.md", "removed")]) == []
+
+
+def test_change_parses_tsv_lines():
+    assert Change.parse_tsv_line("") is None
+    assert Change.parse_tsv_line("0010-a.md") == Change("0010-a.md")
+    assert Change.parse_tsv_line("renamed\t0015-b.md\t0020-b.md\n") == Change(
+        "0015-b.md", "renamed", "0020-b.md"
+    )
+    assert Change.parse_tsv_line("removed\tLICENSE\t") == Change("LICENSE", "removed", None)
 
 
 def _run() -> int:

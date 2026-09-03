@@ -38,6 +38,16 @@ logger = logging.getLogger(__name__)
 # `<id>+<login>@users.noreply.github.com` or `<login>@users.noreply.github.com`
 _NOREPLY_RE = re.compile(r"^(?:\d+\+)?([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)@users\.noreply\.github\.com$")
 
+# `Co-authored-by: Name <email>` trailers, which a squash merge writes for
+# every extra author on the pull request. Without them a scene four people
+# refined would credit only the one whose commit came last.
+_COAUTHOR_RE = re.compile(r"^Co-authored-by:\s*(.*?)\s*<([^>]*)>\s*$", re.IGNORECASE | re.MULTILINE)
+
+# A hung git must never freeze the feed: the network fetch gets the long
+# budget, local plumbing the short one.
+_FETCH_TIMEOUT_S = 180
+_LOCAL_TIMEOUT_S = 60
+
 
 @dataclass(frozen=True)
 class Person:
@@ -118,13 +128,17 @@ class StorySource:
 
     # ------------------------------------------------------------ git plumbing
 
-    def _git(self, *args: str, check: bool = True) -> str:
-        result = subprocess.run(
-            ["git", "-C", str(self._dir), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    def _git(self, *args: str, check: bool = True, timeout: float = _LOCAL_TIMEOUT_S) -> str:
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(self._dir), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError(f"git {' '.join(args)} timed out after {timeout:.0f}s") from error
         if check and result.returncode != 0:
             raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
         return result.stdout
@@ -148,15 +162,25 @@ class StorySource:
                 capture_output=True,
                 text=True,
                 check=True,
+                timeout=_FETCH_TIMEOUT_S,
             )
         else:
-            self._git("fetch", "--filter=blob:none", "origin", self._branch)
+            self._git("fetch", "--filter=blob:none", "origin", self._branch, timeout=_FETCH_TIMEOUT_S)
             self._git("reset", "--hard", f"origin/{self._branch}")
         return self._git("rev-parse", "HEAD").strip()
 
     def _blame(self, file: str) -> tuple[dict[int, str], dict[str, dict]]:
-        """Blame one file once: map final line -> sha, and sha -> author meta."""
-        porcelain = self._git("blame", "--porcelain", "--", file, check=False)
+        """Blame one file once: map final line -> sha, and sha -> author meta.
+
+        A blame that fails is an error, not a quiet "unknown" on every scene:
+        the credit is the product, so the projector says so and the scenes
+        of that file are marked unknown for this reading only.
+        """
+        try:
+            porcelain = self._git("blame", "--porcelain", "--", file, timeout=_FETCH_TIMEOUT_S)
+        except RuntimeError as error:
+            logger.error("[story] blame failed for %s; crediting unknown: %s", file, error)
+            return {}, {}
         line_sha: dict[int, str] = {}
         meta: dict[str, dict] = {}
         current: str | None = None
@@ -178,6 +202,21 @@ class StorySource:
                 meta[current]["time"] = int(raw[len("author-time ") :])
         return line_sha, meta
 
+    def _coauthors(self, sha: str, cache: dict[str, list[Person]]) -> list[Person]:
+        """The `Co-authored-by` people of one commit, read once per reading."""
+        if sha in cache:
+            return cache[sha]
+        people: list[Person] = []
+        try:
+            message = self._git("show", "-s", "--format=%B", sha)
+        except RuntimeError as error:
+            logger.warning("[story] could not read commit %s for co-authors: %s", sha[:7], error)
+            message = ""
+        for name, mail in _COAUTHOR_RE.findall(message):
+            people.append(_person_from_commit(name.strip(), mail))
+        cache[sha] = people
+        return people
+
     # ---------------------------------------------------------------- reading
 
     def read(self) -> Rundown:
@@ -193,6 +232,7 @@ class StorySource:
         story_url = f"{self._html_url}/tree/{self._branch}"
         rundown = Rundown(sha=sha[:7], story_url=story_url)
         global_index = 0
+        coauthor_cache: dict[str, list[Person]] = {}
         for episode in film.episodes:
             line_sha, meta = self._blame(episode.path)
             r_episode = Episode(
@@ -203,7 +243,7 @@ class StorySource:
             )
             for scene in episode.scenes:
                 author, commit, contributors = self._attribute(
-                    line_sha, meta, scene.body_line_start, scene.body_line_end
+                    line_sha, meta, scene.body_line_start, scene.body_line_end, coauthor_cache
                 )
                 commit_url = f"{self._html_url}/commit/{commit}" if commit else None
                 card = Scene(
@@ -243,13 +283,15 @@ class StorySource:
         meta: dict[str, dict],
         start: int,
         end: int,
+        coauthor_cache: dict[str, list[Person]],
     ) -> tuple[Person, str, list[Person]]:
-        """Credit a scene from the commits touching its body lines.
+        """Credit a scene from the commits touching its prose lines.
 
         The primary author is the newest commit over the range; contributors
-        are the distinct authors across it, newest first. A range with no blame
-        (a brand-new file blamed before its blob is local) yields an unknown
-        author rather than an error.
+        are the distinct authors across it, newest first, followed by every
+        `Co-authored-by` a squash merge recorded on those commits. A range
+        with no blame (a brand-new file blamed before its blob is local)
+        yields an unknown author rather than an error.
         """
         shas: list[str] = []
         for line in range(start, end + 1):
@@ -262,11 +304,17 @@ class StorySource:
         shas.sort(key=lambda sha: meta.get(sha, {}).get("time", 0), reverse=True)
         people: list[Person] = []
         seen: set[str] = set()
-        for sha in shas:
-            info = meta.get(sha, {})
-            person = _person_from_commit(info.get("name", "unknown"), info.get("mail", ""))
+
+        def add(person: Person) -> None:
             key = person.login or person.name
-            if key not in seen:
+            if key and key not in seen:
                 seen.add(key)
                 people.append(person)
+
+        for sha in shas:
+            info = meta.get(sha, {})
+            add(_person_from_commit(info.get("name", "unknown"), info.get("mail", "")))
+        for sha in shas:
+            for person in self._coauthors(sha, coauthor_cache):
+                add(person)
         return people[0], shas[0], people

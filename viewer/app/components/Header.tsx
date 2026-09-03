@@ -1,10 +1,23 @@
 "use client";
 
+import { safeHttpUrl } from "@/lib/safeUrl";
+
+const FALLBACK_STORY_URL = "https://github.com/Dere-Wah/open-slop";
+
 /**
  * The channel header: the brand, the connection state, the story sha on air,
  * and the two links out to GitHub. The screenplay itself is only ever read on
  * GitHub — the viewer shows what is playing and points there for the text.
+ *
+ * "Write the next scene" goes to the README of whichever branch the projector
+ * says it is playing: the story URL arrives as `.../tree/<branch>`, and the
+ * README lives at `.../blob/<branch>/README.md`.
  */
+function contributeUrlOf(storyUrl: string | null): string {
+  if (!storyUrl) return FALLBACK_STORY_URL;
+  if (!storyUrl.includes("/tree/")) return storyUrl;
+  return `${storyUrl.replace("/tree/", "/blob/")}/README.md`;
+}
 export function Header({
   status,
   sha,
@@ -23,9 +36,8 @@ export function Header({
     },
   }[status];
 
-  const contributeUrl = storyUrl
-    ? `${storyUrl.replace(/\/tree\/.*/, "")}/blob/story/README.md`
-    : "https://github.com/Dere-Wah/open-slop";
+  const safeStoryUrl = safeHttpUrl(storyUrl);
+  const contributeUrl = contributeUrlOf(safeStoryUrl);
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -44,7 +56,7 @@ export function Header({
       </div>
       <div className="flex items-center gap-2">
         <a
-          href={storyUrl ?? "https://github.com/Dere-Wah/open-slop"}
+          href={safeStoryUrl ?? FALLBACK_STORY_URL}
           target="_blank"
           rel="noreferrer"
           className="rounded-md border border-zinc-800 px-3 py-1.5 font-mono text-xs text-zinc-300 hover:border-zinc-600"

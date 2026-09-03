@@ -9,7 +9,10 @@
   * the media path — the model's video and audio tracks feed the pacer;
   * a live mirror of the model's `state_update` / `queue_update`, so the
     rest of the streamer reads state instead of re-deriving it;
-  * a fan-out of every model message to registered listeners.
+  * a fan-out of every model message to registered listeners, plus two
+    synthetic ones of its own — `session_ready` when a session is up and
+    `session_lost` when one died — so a listener can learn that every clip
+    it had queued is gone without polling `connected`.
 
 The contract this speaks is the fast-h3 clip queue: `enqueue` replies
 `clip_queued`, builds cross into the playout queue on `clip_generated`, and
@@ -45,6 +48,10 @@ MODEL_SAMPLE_RATE = 48_000
 # The model's hard cap on one scene prompt, enforced server-side.
 MAX_PROMPT_CHARS = 800
 
+# The synthetic message kinds this link adds to the model's own.
+SESSION_READY = "session_ready"
+SESSION_LOST = "session_lost"
+
 # Defaults used only until the first state_update arrives.
 _DEFAULT_STATE: dict[str, Any] = {
     "width": 1344,
@@ -78,6 +85,11 @@ class ReactorLink:
         self.state: dict[str, Any] = dict(_DEFAULT_STATE)
         self.generation_clips: list[dict] = []
         self.playout_clips: list[dict] = []
+        # The most recent `command_error` as (command, reason). The model
+        # broadcasts it before acknowledging the refused command, so a caller
+        # whose `send_command` came back None reads the reason here.
+        self.last_refusal: tuple[str, str] | None = None
+        self._session_serial = 0
 
     # -------------------------------------------------------------- wiring
 
@@ -136,6 +148,15 @@ class ReactorLink:
         """Whether a session is live right now (commands would go through)."""
         return self._ready.is_set()
 
+    @property
+    def session_serial(self) -> int:
+        """Counts sessions; a clip id is only meaningful within one serial."""
+        return self._session_serial
+
+    def _fan_out(self, kind: str, data: dict) -> None:
+        for listener in self._listeners:
+            listener(kind, data)
+
     async def wait_first_state(self) -> None:
         """Resolve once the first session delivered its `state_update`."""
         await self._first_state.wait()
@@ -151,25 +172,27 @@ class ReactorLink:
             self.generation_clips = data.get("generation", [])
             self.playout_clips = data.get("playout", [])
         elif kind == "command_error":
+            self.last_refusal = (str(data.get("command", "")), str(data.get("reason", "")))
             logger.warning(
                 "[reactor] command refused: %s — %s",
                 data.get("command"), data.get("reason"),
             )
-        for listener in self._listeners:
-            listener(kind, data)
+        self._fan_out(kind, data)
 
     # ------------------------------------------------------------ commands
 
     async def send_command(self, command: str, data: dict) -> Any:
         """Send one command on the live session; None when disconnected.
 
-        Waits for a session to exist first, so callers ride out a reconnect
-        instead of failing. A None / bodyless reply means the model refused
-        the command (it broadcast `command_error` with the reason).
+        Does not wait for a session: a command meant for the session that
+        just died must not be delivered to the next one, whose queue starts
+        empty and whose clip ids are all new. Callers check `connected` and
+        `session_serial`. A None / bodyless reply on a live session means the
+        model refused the command (it broadcast `command_error` with the
+        reason, kept in `last_refusal`).
         """
-        await self._ready.wait()
         reactor = self._reactor
-        if reactor is None:
+        if reactor is None or not self._ready.is_set():
             return None
         try:
             return payload(await reactor.send_command(command, data))
@@ -238,8 +261,10 @@ class ReactorLink:
         # milliseconds — and hands a continuing scene over with no cut at
         # all. The streamer only decides what enters the queue and where.
         await self._raw_command(reactor, "set_autoplay", {"enabled": True})
+        self._session_serial += 1
         self._first_state.set()
         self._ready.set()
+        self._fan_out(SESSION_READY, {"serial": self._session_serial})
         try:
             await disconnected.wait()
             logger.warning("[reactor] session disconnected")
@@ -262,12 +287,16 @@ class ReactorLink:
         return payload(await reactor.send_command(command, data or {}))
 
     async def _teardown(self) -> None:
+        was_ready = self._ready.is_set()
         self._ready.clear()
         # The queues died with the session; a stale mirror would make the
-        # director believe scenes are still queued.
+        # screening believe scenes are still queued.
         self.generation_clips = []
         self.playout_clips = []
+        self.state = {**self.state, "generation_queued": 0, "playout_queued": 0}
         reactor, self._reactor = self._reactor, None
+        if was_ready:
+            self._fan_out(SESSION_LOST, {"serial": self._session_serial})
         if reactor is None:
             return
         try:

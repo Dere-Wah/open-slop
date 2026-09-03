@@ -1,13 +1,14 @@
 "use client";
 
+import { safeHttpUrl } from "@/lib/safeUrl";
 import type { RundownScene, ShowState } from "@/lib/types";
 
 /**
  * What is on air, drawn over the player. The now-playing card names the
  * episode, the scene, and the author, and links the commit. When the scene
  * has several authors it says so (`@alice +3`), reading the count off the
- * rundown. When the show is between scenes or re-reading the story, an
- * intermission ribbon takes over.
+ * rundown. When the show is warming up, between scenes, or has lost the model
+ * and is about to restart the screening, an intermission ribbon takes over.
  */
 export function Overlay({
   state,
@@ -19,14 +20,25 @@ export function Overlay({
   if (!state || state.status === "warming") {
     return (
       <Intermission
-        line="reading the story…"
+        line={state?.detail || "reading the story…"}
         sub={state?.sha ? `now at ${state.sha}` : undefined}
+      />
+    );
+  }
+
+  if (state.status === "downtime") {
+    return (
+      <Intermission
+        line="we lost the projector — the screening restarts from the top"
+        sub={state.detail || undefined}
       />
     );
   }
 
   const extra = scene ? Math.max(0, scene.contributors.length - 1) : 0;
   const author = state.author ?? "someone";
+  const authorUrl = safeHttpUrl(state.author_url);
+  const commitUrl = safeHttpUrl(state.commit_url);
 
   return (
     <>
@@ -40,9 +52,9 @@ export function Overlay({
           </span>
         </div>
         <div className="mt-0.5 flex items-center gap-2 font-mono text-xs text-zinc-400">
-          {state.author_url ? (
+          {authorUrl ? (
             <a
-              href={state.author_url}
+              href={authorUrl}
               target="_blank"
               rel="noreferrer"
               className="text-brand hover:underline"
@@ -54,9 +66,9 @@ export function Overlay({
           )}
           {extra > 0 && <span className="text-zinc-500">+{extra}</span>}
           {state.commit &&
-            (state.commit_url ? (
+            (commitUrl ? (
               <a
-                href={state.commit_url}
+                href={commitUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-zinc-500 hover:text-zinc-300"

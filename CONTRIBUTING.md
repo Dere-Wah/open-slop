@@ -9,11 +9,14 @@ approving a scene lives on the `story` branch, which is the repository's
 default branch. Start with its `README.md` and its `skills/`. In short: one
 episode is one `NNNN-title.md` file at the branch root, scenes are separated by
 `---` blocks that set `seed` and `seconds`, and a pull request merges once
-three people comment `/approve`. No maintainer gate.
+three people whose accounts are at least 30 days old comment `/approve` and six
+hours have passed since its last push. No maintainer gate.
 
 ## To change the code — this branch (`code`)
 
-The projector and viewer live here. Before opening a pull request:
+The projector and viewer live here. Start with [`AGENTS.md`](./AGENTS.md) and
+the guide in [`skills/`](./skills/README.md) that matches the part you are
+changing. Before opening a pull request:
 
 ```bash
 python3 story-tools/test_validate.py            # the validator's tests pass
@@ -26,11 +29,18 @@ Guidelines:
 - **`story-tools/validate.py` is the single source of truth for the episode
   format.** CI on the story branch and the projector both run it. If you change
   what a legal episode is, change it there, add a test, and update the story
-  branch's `skills/` in the same spirit — never let the two drift.
+  branch's `skills/writing-a-scene` or `skills/how-approval-works` in the same
+  piece of work — never let the two drift. The procedure is in
+  `skills/story-format-validator`.
 - **Keep the story-branch workflows thin.** They check this branch's
   `story-tools/` out at a pinned ref and run it. The logic that decides whether
   a story pull request may merge must stay here, on a branch a story
-  contributor cannot edit.
+  contributor cannot edit. The invariants they must keep — never execute
+  pull-request content, never `${{ }}`-interpolate untrusted values, the vote
+  anchor — are in `skills/story-ci-and-approval`.
+- **Only `projector/screening.py` writes to the model's queue**, and the viewer
+  trusts only the `streamer` participant. `skills/projector-architecture` has
+  the reasons.
 - **Match the surrounding style.** The projector's media path (`pacer.py`,
   `publisher.py`, `reactor_link.py`) is inherited from the Reactor example and
   should stay close to it. Comments explain non-obvious intent, not the obvious.

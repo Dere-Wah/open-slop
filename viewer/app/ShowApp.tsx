@@ -22,12 +22,20 @@ import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/type
  *
  * It never calls GitHub. The rundown links out to it; that is all.
  *
+ * Trust is by participant identity. Every viewer holds a data-publish grant
+ * (that is how chat works), so a `show.state` packet is honoured only when it
+ * comes from the streamer, and a chat message may only sign as the show when
+ * it does too. Room metadata is written through the server API, which no
+ * viewer token can reach, so it needs no such check.
+ *
  * The LiveKit client resumes transient drops on its own; when it gives up,
  * this component re-fetches a token and rejoins in a loop.
  */
 
 const CHAT_TOPIC = "show.chat";
 const STATE_TOPIC = "show.state";
+const STREAMER_IDENTITY = "streamer";
+const SHOW_AUTHOR = "show";
 const RECONNECT_DELAY_MS = 3_000;
 const CHAT_LIMIT = 200;
 
@@ -44,8 +52,16 @@ function safeParse<T>(bytes: Uint8Array): T | null {
 function parseMetadata(metadata: string | undefined): RundownData | null {
   if (!metadata) return null;
   try {
-    const parsed = JSON.parse(metadata) as RundownData;
-    return parsed && Array.isArray(parsed.episodes) ? parsed : null;
+    const parsed = JSON.parse(metadata) as Partial<RundownData>;
+    if (
+      !parsed ||
+      typeof parsed.screening !== "number" ||
+      typeof parsed.story_url !== "string" ||
+      !Array.isArray(parsed.episodes)
+    ) {
+      return null;
+    }
+    return parsed as RundownData;
   } catch {
     return null;
   }
@@ -72,7 +88,7 @@ export function ShowApp() {
     setShowState(state);
     // Correct the server's end time into the viewer's own clock, so the
     // countdown is right even when the two clocks disagree.
-    if (typeof state.ends_at === "number" && typeof state.now === "number") {
+    if (state.status === "live" && typeof state.ends_at === "number") {
       const skew = Date.now() - state.now;
       setEndsAtLocal(state.ends_at + skew);
     } else {
@@ -108,16 +124,21 @@ export function ShowApp() {
             const parsed = parseMetadata(metadata);
             if (parsed) setRundown(parsed);
           });
-          room.on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
+          room.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+            const fromStreamer = participant?.identity === STREAMER_IDENTITY;
             if (topic === CHAT_TOPIC) {
               const message = safeParse<{ author?: string; text?: string }>(payload);
               if (!message) return;
-              const author = String(message.author ?? "").slice(0, 32);
+              let author = String(message.author ?? "").slice(0, 32);
               const text = String(message.text ?? "").slice(0, 500);
+              // Only the streamer speaks as the show; a viewer who signs as
+              // "show" is shown as a viewer with that name, not as the show.
+              if (author === SHOW_AUTHOR && !fromStreamer) author = `"${SHOW_AUTHOR}"`;
               if (author && text) appendChat(author, text);
             } else if (topic === STATE_TOPIC) {
+              if (!fromStreamer) return;
               const state = safeParse<ShowState>(payload);
-              if (state) applyState(state);
+              if (state && typeof state.now === "number") applyState(state);
             }
           });
           room.on(RoomEvent.ConnectionStateChanged, (state) => {
@@ -186,7 +207,13 @@ export function ShowApp() {
             progress={showState?.progress}
             overlay={<Overlay state={showState} scene={currentScene} />}
           />
-          <Countdown endsAt={endsAtLocal} stalled={!!showState?.stalled} />
+          <Countdown
+            endsAt={endsAtLocal}
+            stalled={!!showState?.stalled}
+            status={showState?.status}
+            sha={showState?.sha}
+            nextSha={showState?.next_sha}
+          />
           <Rundown rundown={rundown} state={showState} />
         </div>
         <Chat entries={chat} onSend={sendChat} connected={status === "live"} />

@@ -2,15 +2,22 @@
 //
 // `ShowState` is the live cursor on the `show.state` data topic, republished
 // once a second. `Rundown` is the whole screening, written into LiveKit room
-// metadata once per screening and delivered to a viewer on join. The viewer
-// joins them on (screening, scene) — never by calling GitHub.
+// metadata when the screening's first clip starts and delivered to a viewer on
+// join. The viewer joins them on (screening, scene) — never by calling GitHub.
+//
+// Both come off the wire from the room's streamer participant only; the viewer
+// ignores a `show.state` packet from anyone else.
+
+export type ShowStatus = "warming" | "downtime" | "live";
 
 export interface ShowState {
   v: number;
   topic: "state";
-  status: "warming" | "live";
+  status: ShowStatus;
+  detail?: string; // why nothing is on air, while not live
   screening?: number;
   sha?: string;
+  next_sha?: string; // what the next screening was snapshotted at, when known
   episode_index?: number;
   episodes_total?: number;
   episode_title?: string;
@@ -59,4 +66,5 @@ export interface Rundown {
   story_url: string;
   total_seconds: number;
   episodes: RundownEpisode[];
+  truncated?: boolean; // the tail was cut to fit room metadata
 }
