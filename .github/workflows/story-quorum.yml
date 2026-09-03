@@ -64,7 +64,7 @@ jobs:
         with:
           script: |
             const QUORUM = 1;
-            const COOLING_OFF_MINUTES = 2;
+            const COOLING_OFF_MINUTES = 1;
             const MIN_ACCOUNT_AGE_DAYS = 30;
             const BLOCK = /^\/block\b/i;
             const UNBLOCK = /^\/unblock\b/i;
