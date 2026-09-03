@@ -1,10 +1,23 @@
 import type { Metadata, Viewport } from "next";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OpenSlop | The First Ever Open Source Movie",
-  description:
-    "A movie written by its audience, screened around the clock. The screenplay is a branch on GitHub: add a scene in a pull request, get it approved, and it is on air in the next screening.",
+  metadataBase: new URL(SITE.url),
+  title: SITE.title,
+  description: SITE.description,
+  openGraph: {
+    type: "website",
+    url: SITE.url,
+    siteName: "OpenSlop",
+    title: SITE.title,
+    description: SITE.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE.title,
+    description: SITE.description,
+  },
 };
 
 export const viewport: Viewport = {

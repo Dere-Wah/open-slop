@@ -105,10 +105,10 @@ export function RepoHeader({
               href={contributingUrl(repo)}
               target="_blank"
               rel="noreferrer"
-              className="gh-btn gh-btn-primary gh-btn-lg"
+              className="gh-btn gh-btn-primary"
               title="Add or edit a scene in three steps"
             >
-              <GitPullRequestIcon size={18} />
+              <GitPullRequestIcon />
               <span className="hidden sm:inline">Write the next scene</span>
               <span className="sm:hidden">Write a scene</span>
             </a>

@@ -63,12 +63,12 @@ function film(count: number): Rundown {
 }
 
 const CHATTER = [
-  ["mira", "the lighthouse shot is gorgeous"],
-  ["kb", "who wrote scene 2?? that eye"],
-  ["tomasz", "seed 481517 again please, that one was perfect"],
-  ["ren", "https://github.com/Dere-Wah/open-slop/pull/41 is up, needs one more approve"],
-  ["ada", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
-  ["mira", "ok the keeper's face in scene 3 is going to haunt me"],
+  ["@mira", "the lighthouse shot is gorgeous"],
+  ["@kb", "who wrote scene 2?? that eye"],
+  ["@tomasz", "seed 481517 again please, that one was perfect"],
+  ["@ren", "https://github.com/Dere-Wah/open-slop/pull/41 is up, needs one more approve"],
+  ["@ada", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  ["@mira", "ok the keeper's face in scene 3 is going to haunt me"],
 ] as const;
 
 function chatter(count: number): ChatEntry[] {

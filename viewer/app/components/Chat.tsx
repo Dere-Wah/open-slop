@@ -63,7 +63,9 @@ export function Chat({
   const atBottomRef = useRef(true);
 
   useEffect(() => {
-    setName(localStorage.getItem(NAME_KEY) ?? "");
+    const stored = asHandle(localStorage.getItem(NAME_KEY) ?? "");
+    setName(stored);
+    if (stored) localStorage.setItem(NAME_KEY, stored);
     setHidden(localStorage.getItem(HIDDEN_KEY) === "1");
   }, []);
 
@@ -99,7 +101,7 @@ export function Chat({
   }
 
   function chooseName(chosen: string) {
-    const author = chosen.trim().slice(0, NAME_MAX);
+    const author = asHandle(chosen);
     if (!author) return;
     localStorage.setItem(NAME_KEY, author);
     setName(author);
@@ -255,7 +257,19 @@ function renderText(text: string, repo: RepoRef): ReactNode {
   return parts;
 }
 
-/** Ask what to call this viewer. Enter confirms, Escape or the backdrop cancels. */
+/**
+ * A chat name is always an @handle: whatever was typed, without spaces or
+ * its own leading @, behind one @. Empty input stays empty.
+ */
+function asHandle(typed: string): string {
+  const handle = typed.replace(/\s+/g, "").replace(/^@+/, "").slice(0, NAME_MAX - 1);
+  return handle ? `@${handle}` : "";
+}
+
+/**
+ * Ask what to call this viewer. The @ is part of the field, not something to
+ * type. Enter confirms, Escape or the backdrop cancels.
+ */
 function NameDialog({
   initial,
   onCancel,
@@ -265,7 +279,7 @@ function NameDialog({
   onCancel: () => void;
   onChoose: (name: string) => void;
 }) {
-  const [value, setValue] = useState(initial);
+  const [value, setValue] = useState(initial.replace(/^@/, ""));
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Focus and select the previous name once, when the dialog opens. This
@@ -313,17 +327,35 @@ function NameDialog({
         </header>
         <div className="flex flex-col gap-3 p-4">
           <p className="text-sm text-fg-muted">
-            Shown next to your messages. Use your GitHub handle with an @ to get your avatar.
+            Shown next to your messages. Use your GitHub handle to get your avatar.
           </p>
-          <input
-            ref={inputRef}
-            value={value}
-            onChange={(event) => setValue(event.target.value.slice(0, NAME_MAX))}
-            placeholder="@octocat"
-            aria-label="Your name"
-            maxLength={NAME_MAX}
-            className="gh-input"
-          />
+          <div className="gh-input flex items-stretch overflow-hidden px-0">
+            <span
+              className="flex select-none items-center border-r border-line bg-canvas-subtle px-2.5 text-fg-muted"
+              aria-hidden="true"
+            >
+              @
+            </span>
+            <input
+              ref={inputRef}
+              value={value}
+              onChange={(event) =>
+                setValue(
+                  event.target.value
+                    .replace(/\s+/g, "")
+                    .replace(/^@+/, "")
+                    .slice(0, NAME_MAX - 1),
+                )
+              }
+              placeholder="octocat"
+              aria-label="Your handle"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={NAME_MAX - 1}
+              className="min-w-0 flex-1 bg-transparent px-2 outline-none"
+            />
+          </div>
         </div>
         <footer className="flex justify-end gap-2 border-t border-line bg-canvas-subtle px-4 py-3">
           <button type="button" onClick={onCancel} className="gh-btn">
