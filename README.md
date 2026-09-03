@@ -31,7 +31,7 @@ downtime and the screening restarts from the top when it is back.
 | Branch | Holds | License |
 | --- | --- | --- |
 | **`story`** (default) | The screenplay: `NNNN-title.md` episodes, `STYLE.md`, `skills/`, `AGENTS.md`, workflows | CC BY-SA 4.0 |
-| **`code`** (here) | `projector/`, `viewer/`, `story-tools/`, `skills/`, `AGENTS.md` | Apache-2.0 |
+| **`code`** (here) | `projector/`, `viewer/`, `story-tools/`, `skills/`, `assets/`, `AGENTS.md` | Apache-2.0 |
 
 They are orphan branches with no shared history, so a story pull request can
 never show code in its diff, and the two are never merged into one another.
@@ -52,6 +52,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `story-tools/validate.py` | The one validator, shared by CI and the projector. |
 | `viewer/` | The Next.js viewer: player, overlay, countdown, rundown, chat. |
 | `skills/` | Guides for changing this branch: the projector, the format, the CI and vote. |
+| `assets/` | Screenshots the story bot embeds in its "Audience vote" comment (how to approve). Served raw from this branch. |
 | `AGENTS.md` | Points coding agents at the skills and states the rules that apply everywhere. |
 
 ## Run it locally
