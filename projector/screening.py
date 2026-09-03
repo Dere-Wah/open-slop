@@ -92,7 +92,7 @@ CURTAIN_MAX_WAIT_S = 180.0
 # frame and the next one's first. The next reel is already built during the
 # pre-roll, so this is a deliberate pause, not a wait for the model; it is what
 # makes the loop read as an ending and a fresh start rather than a splice.
-INTERMISSION_SECONDS = 20.0
+INTERMISSION_SECONDS = 10.0
 
 # Headroom kept under the model's own caps, so a built clip always has
 # somewhere to land and builds never pause on a full playout queue.
