@@ -1,6 +1,6 @@
-# Open Slop skills
+# OpenSlop skills
 
-Short guides for finding your way around Open Slop. Read the one that matches
+Short guides for finding your way around OpenSlop. Read the one that matches
 what you are trying to do.
 
 | Guide | Read it when you want to… |

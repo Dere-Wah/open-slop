@@ -1,6 +1,6 @@
 ---
 name: how-approval-works
-description: How an Open Slop story pull request gets merged — the audience vote by GitHub approving review, who may vote, the short wait counted from the last push, why a push resets the vote, the /block veto and model moderation, and how on-screen credit is assigned per scene.
+description: How an OpenSlop story pull request gets merged — the audience vote by GitHub approving review, who may vote, the short wait counted from the last push, why a push resets the vote, the /block veto and model moderation, and how on-screen credit is assigned per scene.
 ---
 
 # How approval works
@@ -18,7 +18,7 @@ You approve a story pull request the way you approve any pull request:
 **Files changed → Review changes → Approve → Submit review**.
 
 GitHub's built-in "required approvals" only counts people with write access,
-and Open Slop gives write access to no one — so GitHub shows your approval with
+and OpenSlop gives write access to no one — so GitHub shows your approval with
 a grey check mark and does not count it itself. A bot does:
 
 - It counts the distinct people whose latest review on the current commit is

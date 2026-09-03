@@ -1,4 +1,4 @@
-# The Open Slop show bible
+# The OpenSlop show bible
 
 Read this before you write a scene. It is what keeps a film written by strangers
 looking like one film.

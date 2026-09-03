@@ -1,11 +1,11 @@
 ---
 name: repository-map
-description: How the Open Slop repository is laid out — the two orphan branches, what lives on each, and how the projector turns this branch into a broadcast. Read this first to know where anything is.
+description: How the OpenSlop repository is laid out — the two orphan branches, what lives on each, and how the projector turns this branch into a broadcast. Read this first to know where anything is.
 ---
 
 # The repository map
 
-Open Slop is one GitHub repository with **two branches that share no history**.
+OpenSlop is one GitHub repository with **two branches that share no history**.
 This is unusual, so it is worth understanding before you look for anything.
 
 ## Two branches, on purpose

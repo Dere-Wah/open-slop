@@ -1,16 +1,25 @@
-# Open Slop
+<h1 align="center">OpenSlop | The First Ever Open Source Movie</h1>
 
-**A movie that never stops playing. Anyone can write the next scene.**
+<p align="center">
+  <a href="https://openslop.live">
+    <img src="https://raw.githubusercontent.com/Dere-Wah/open-slop/code/assets/screening.png" alt="OpenSlop on air at openslop.live — the player, the rundown, and the chat" width="900">
+  </a>
+</p>
 
-Watch it at **[openslop.live](https://openslop.live)**.
+<p align="center"><b><a href="https://openslop.live">▶&nbsp;&nbsp;Watch the screening</a></b></p>
 
-This branch is the movie. Each `NNNN-title.md` file is one episode. A projector
-reads the files, renders every scene live on [Reactor](https://reactor.inc), and
-streams the result 24/7. When the movie ends, it starts over with whatever is on this branch
-now. Merge a scene, and it is on air in the next run, with your name on screen.
+OpenSlop is a movie made the way open source software is made. There is no
+director and no studio. The screenplay is this branch; every `NNNN-title.md`
+file is one episode, and every scene in it is a pull request somebody opened.
+A projector reads the branch, renders each scene live on
+[Reactor](https://reactor.inc), and screens the movie 24/7 at
+[openslop.live](https://openslop.live). When it reaches the end, it starts over
+with whatever the branch says now.
 
-Nobody approves the story. The audience does: open a pull request, get enough
-approving reviews, and it merges on its own.
+**You can add to it.** Write a scene, open a pull request, and other viewers
+approve it the way they would review code. Reach the bar and it merges on its
+own — no maintainer in the loop. Your scene is on air in the next screening,
+with your name on screen.
 
 ## Running on Reactor
 

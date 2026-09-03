@@ -1,6 +1,6 @@
 ---
 name: writing-a-scene
-description: Write or edit an Open Slop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, and how to pass the format checker on the first try.
+description: Write or edit an OpenSlop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, and how to pass the format checker on the first try.
 ---
 
 # Writing a scene
