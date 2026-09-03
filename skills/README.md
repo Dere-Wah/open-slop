@@ -18,3 +18,4 @@ root points coding agents here.
 The machine that plays the film has its own guides on the `code` branch, under
 `skills/` there: the projector's architecture, the story format as the validator
 enforces it, and the CI and approval workflows.
+x
