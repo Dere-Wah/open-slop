@@ -1,0 +1,64 @@
+# Greet a new story pull request and arm auto-merge, so the moment the format
+# check and the audience vote are both green, GitHub merges it with no human in
+# the loop. Runs from the default branch (`story`).
+#
+# Auto-merge needs two repository settings, done once (see GITHUB_SETUP):
+# "Allow auto-merge" on, and squash as the merge method — squash is what keeps
+# one contribution to one commit, which the per-scene credit depends on.
+name: story-welcome
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+    branches: [story]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const MARKER = "<!-- open-slop:welcome -->";
+
+            const body = [
+              MARKER,
+              `### Welcome to Open Slop, @${pr.user.login}`,
+              "",
+              "You are writing a scene of a film that anyone can write, and the audience approves.",
+              "",
+              "1. A format check runs automatically and comments what it found.",
+              "2. Anyone can vote it in by commenting `/approve`. **Three approvals** and a short cooling-off window, and it merges on its own — no maintainer needed.",
+              "3. At the next screening the projector re-reads this branch and your scene is on air at [openslop.live](https://openslop.live), credited to you.",
+              "",
+              "A pull request may only touch episode files and `README.md` / `STYLE.md` / `LICENSE`. See [`skills/how-approval-works`](https://github.com/" + owner + "/" + repo + "/blob/story/skills/how-approval-works/SKILL.md).",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: pr.number, body,
+            });
+
+            // Arm auto-merge (squash). It waits for the required checks
+            // (story/validate + story/quorum) before it fires.
+            try {
+              await github.graphql(
+                `mutation($id: ID!) {
+                   enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) {
+                     clientMutationId
+                   }
+                 }`,
+                { id: pr.node_id },
+              );
+            } catch (error) {
+              core.warning(
+                "Could not arm auto-merge (is 'Allow auto-merge' on, with branch protection requiring the checks?): " +
+                  error.message,
+              );
+            }

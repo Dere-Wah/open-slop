@@ -1,0 +1,140 @@
+# Gate a story pull request on the episode format.
+#
+# SECURITY INVARIANT — read before editing:
+#   This workflow NEVER executes a single line from the pull request. It checks
+#   the PR head out as DATA (into ./story-pr) and reads those files as text with
+#   the validator, which is checked out separately from the `code` branch (into
+#   ./tools). There is no `pip install`, no build, no script from the PR. Keep it
+#   that way: the moment this runs PR code, a contributor can rewrite the check
+#   that judges their own change.
+#
+#   Untrusted values (changed filenames, the validator's report) are passed
+#   through files and environment variables, never interpolated with ${{ }} into
+#   a shell line or an inline script — that interpolation would be a
+#   command-injection vector under pull_request_target's write-scoped token.
+#
+# It runs from the default branch (`story`) via pull_request_target, so the copy
+# that runs is always this trusted one, not the PR's.
+name: story-validate
+
+on:
+  pull_request_target:
+    branches: [story]
+
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the pull request's files (data only, never executed)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: story-pr
+          persist-credentials: false
+
+      - name: Fetch the validator from the code branch
+        uses: actions/checkout@v4
+        with:
+          # TODO(GITHUB_SETUP): pin to a code-branch commit SHA once pushed, so
+          # the validator cannot drift from the reviewed one. `code` by name is
+          # fine to start; a SHA is the production form.
+          ref: code
+          path: tools
+          sparse-checkout: story-tools
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: List the pull request's changed files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            // Written to a file, not returned into a shell line, so a crafted
+            // filename cannot inject a command.
+            require("fs").writeFileSync(
+              "changed.txt",
+              files.map((f) => f.filename).join("\n") + "\n",
+            );
+
+      - name: Validate the film
+        id: validate
+        run: |
+          ARGS=()
+          while IFS= read -r f; do
+            [ -n "$f" ] && ARGS+=(--changed "$f")
+          done < changed.txt
+          set +e
+          python tools/story-tools/validate.py story-pr "${ARGS[@]}" --report > report.txt 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat report.txt
+
+      - name: Post status and comment
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          VALIDATE_CODE: ${{ steps.validate.outputs.code }}
+        with:
+          script: |
+            const fs = require("fs");
+            const ok = process.env.VALIDATE_CODE === "0";
+            const report = fs.existsSync("report.txt")
+              ? fs.readFileSync("report.txt", "utf8").trim() || "(no output)"
+              : "(no output)";
+            const sha = context.payload.pull_request.head.sha;
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              context: "story/validate",
+              state: ok ? "success" : "failure",
+              description: ok ? "the film validates" : "the film has problems — see the comment",
+            });
+
+            const marker = "<!-- open-slop:validate -->";
+            const body = [
+              marker,
+              ok ? "### Format check passed" : "### Format check found problems",
+              "",
+              "```",
+              report,
+              "```",
+              "",
+              ok
+                ? "When three people `/approve` this and the cooling-off window has passed, it merges on its own."
+                : "Fix the problems above and push again; this re-runs automatically.",
+            ].join("\n");
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

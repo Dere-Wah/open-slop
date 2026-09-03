@@ -1,0 +1,136 @@
+# Count the audience vote on a story pull request and publish it as a commit
+# status (`story/quorum`). GitHub's native required-approvals only counts
+# reviewers with write access, and Open Slop gives write access to no one — so
+# the vote is `/approve` comments from anyone, tallied here.
+#
+# It runs from the default branch (`story`) on every new comment, and on an
+# hourly sweep so a pull request that has gone quiet still crosses its
+# cooling-off line and merges. It does not merge anything itself: it sets the
+# status, and GitHub's auto-merge (armed by story-welcome) does the rest once
+# story/validate and story/quorum are both green.
+name: story-quorum
+
+on:
+  issue_comment:
+    types: [created, edited, deleted]
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: read
+  issues: write
+
+jobs:
+  quorum:
+    # Comments on plain issues are ignored; only pull-request threads and the
+    # scheduled sweep run.
+    if: github.event_name == 'schedule' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const QUORUM = 3;
+            const COOLING_OFF_HOURS = 6;
+            const APPROVE = /^\/approve\b/i;
+            const UNAPPROVE = /^\/unapprove\b/i;
+            const BLOCK = /^\/block\b/i;
+            const CAN_BLOCK = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+            const MARKER = "<!-- open-slop:quorum -->";
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            async function evaluate(number) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: number,
+              });
+              if (pr.state !== "open" || pr.base.ref !== "story") return;
+
+              const head = pr.head.sha;
+              const { data: headCommit } = await github.rest.repos.getCommit({
+                owner, repo, ref: head,
+              });
+              const headTime = new Date(headCommit.commit.committer.date).getTime();
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: number, per_page: 100,
+              });
+
+              // A voter's LATEST /approve or /unapprove after the head commit
+              // decides their vote — so a new commit resets the tally for free.
+              const votes = new Map();
+              let blocked = false;
+              for (const c of comments) {
+                if (!c.body || c.user?.type === "Bot") continue;
+                const when = new Date(c.created_at).getTime();
+                if (BLOCK.test(c.body) && CAN_BLOCK.has(c.author_association)) {
+                  blocked = true;
+                }
+                if (when < headTime) continue;
+                if (c.user.login === pr.user.login) continue; // not the author
+                if (APPROVE.test(c.body)) votes.set(c.user.login, true);
+                else if (UNAPPROVE.test(c.body)) votes.set(c.user.login, false);
+              }
+              const approvers = [...votes.entries()].filter(([, v]) => v).map(([u]) => u);
+              const count = approvers.length;
+
+              const ageHours = (Date.now() - new Date(pr.created_at).getTime()) / 3.6e6;
+              const cooled = ageHours >= COOLING_OFF_HOURS;
+
+              let state, description;
+              if (blocked) {
+                state = "failure";
+                description = "blocked by a maintainer";
+              } else if (count >= QUORUM && cooled) {
+                state = "success";
+                description = `${count}/${QUORUM} approvals — canon`;
+              } else if (count >= QUORUM && !cooled) {
+                state = "pending";
+                const left = Math.ceil(COOLING_OFF_HOURS - ageHours);
+                description = `${count}/${QUORUM} approvals — cooling off ~${left}h`;
+              } else {
+                state = "pending";
+                description = `${count}/${QUORUM} approvals`;
+              }
+
+              await github.rest.repos.createCommitStatus({
+                owner, repo, sha: head, context: "story/quorum", state, description,
+              });
+
+              const lines = [
+                MARKER,
+                `### Audience vote: ${count}/${QUORUM}`,
+                "",
+                blocked
+                  ? "This pull request is **blocked by a maintainer** and will not merge."
+                  : count >= QUORUM && cooled
+                    ? "Quorum reached. It merges as soon as the format check is green."
+                    : count >= QUORUM
+                      ? `Quorum reached — merges after the cooling-off window (~${Math.ceil(COOLING_OFF_HOURS - ageHours)}h more).`
+                      : `Comment \`/approve\` to vote it in. Need ${QUORUM - count} more.`,
+                "",
+                approvers.length ? `Approved by: ${approvers.map((u) => "@" + u).join(", ")}` : "_No approvals yet._",
+                "",
+                "_Anyone can `/approve`. A new commit resets the vote. `/unapprove` to withdraw._",
+              ];
+              const body = lines.join("\n");
+
+              const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+              }
+            }
+
+            if (context.eventName === "schedule") {
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: "open", base: "story", per_page: 100,
+              });
+              for (const pr of prs) await evaluate(pr.number);
+            } else {
+              await evaluate(context.payload.issue.number);
+            }
