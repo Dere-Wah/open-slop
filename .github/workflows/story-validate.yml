@@ -45,14 +45,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch the pull request's files (data only, never executed)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: story-pr
           persist-credentials: false
+          # actions/checkout refuses a fork's head under pull_request_target
+          # unless told so, because most workflows go on to run what they
+          # fetched. This one does not: story-pr is read by a validator that
+          # comes from a pinned commit of the code branch, and no step runs,
+          # imports, or installs anything from story-pr. That is what makes
+          # the opt-in safe here; keep it true only while that stays true.
+          allow-unsafe-pr-checkout: true
 
       - name: Fetch the validator from the code branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Pinned to a code-branch commit so the validator cannot drift from
           # the reviewed one. Move this sha deliberately, after the change to
@@ -103,6 +110,11 @@ jobs:
         with:
           script: |
             const fs = require("fs");
+            // An empty code means a step before the validator failed: the
+            // check did not run, and the contributor must not be told their
+            // scene is wrong. Say so, and mark the status as an error, not a
+            // failure, so it reads as ours.
+            const ran = process.env.VALIDATE_CODE !== "";
             const ok = process.env.VALIDATE_CODE === "0";
             const report = fs.existsSync("report.txt")
               ? fs.readFileSync("report.txt", "utf8").trim() || "(no output)"
@@ -139,21 +151,34 @@ jobs:
               repo: context.repo.repo,
               sha,
               context: "story/validate",
-              state: ok ? "success" : "failure",
-              description: ok ? "the film validates" : "the film has problems — see the comment",
+              state: ok ? "success" : ran ? "failure" : "error",
+              description: ok
+                ? "the film validates"
+                : ran
+                  ? "the film has problems — see the comment"
+                  : "the check could not run; a maintainer will look",
             });
 
             const marker = "<!-- open-slop:validate -->";
-            const body = [
-              marker,
-              ok ? "### ✅ Format check passed" : `### ❌ Format check found ${problems} problem(s)`,
-              "",
-              asMarkdown(report).slice(0, 60_000),
-              "",
-              ok
-                ? "🗳️ Once enough people approve it (see the **Audience vote** comment) and the wait after your last push has passed, it merges on its own."
-                : "🔧 Fix the problems above and push again; this re-runs automatically.",
-            ].join("\n");
+            const body = !ran
+              ? [
+                  marker,
+                  "### ⚠️ The format check could not run",
+                  "",
+                  "Something failed in the workflow before your scene was looked at. This is on the project, not on you; a maintainer will fix it and the check re-runs by itself. Nothing to do on your side.",
+                  "",
+                  `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                ].join("\n")
+              : [
+                  marker,
+                  ok ? "### ✅ Format check passed" : `### ❌ Format check found ${problems} problem(s)`,
+                  "",
+                  asMarkdown(report).slice(0, 60_000),
+                  "",
+                  ok
+                    ? "🗳️ Once enough people approve it (see the **Audience vote** comment) and the wait after your last push has passed, it merges on its own."
+                    : "🔧 Fix the problems above and push again; this re-runs automatically.",
+                ].join("\n");
 
             // The sticky comment is the bot's own. A contributor who pastes
             // the marker into a comment of theirs is not handing us a comment
@@ -188,13 +213,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch the story tip (data only)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: story-tip
           persist-credentials: false
 
       - name: Fetch the validator from the code branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: 11cf4151cebaacee0ec30905ad1d7c62ac266fdd
           path: tools
