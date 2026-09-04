@@ -179,7 +179,11 @@ that does not exist yet.
 
 ## What the viewer is told
 
-Two payloads, both owned by `broadcast.py`:
+The field-by-field contract is `PROTOCOL.md` at the repo root, written for
+anyone in the room, partners included. It documents what `broadcast.py` and
+`publisher.py` write; a change to either updates `PROTOCOL.md` (and
+`viewer/lib/types.ts`) in the same change, additively. Two payloads, both
+owned by `broadcast.py`:
 
 - **The cursor**, on data topic `show.state`, once a second: status, the reel
   and sha on air, the episode/scene indices, author and commit with links, the

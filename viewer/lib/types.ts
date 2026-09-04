@@ -1,4 +1,5 @@
-// The two payloads the projector sends the viewer.
+// The two payloads the projector sends the viewer. PROTOCOL.md at the repo
+// root is the prose contract for both; a field added here is added there.
 //
 // `ShowState` is the live cursor on the `show.state` data topic, republished
 // once a second. `Rundown` is the whole screening, written into LiveKit room

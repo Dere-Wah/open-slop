@@ -45,7 +45,8 @@ is a CORS fence for tidiness, not a secret: the room is public.
 
 ## 2. What is in the room
 
-**Room name:** `open-slop`.
+**Room name:** `open-slop`. Everything that travels in it, field by field, is
+[PROTOCOL.md](./PROTOCOL.md); this is the short version.
 
 **One media publisher,** the participant with identity `streamer`. It publishes
 two separate tracks:
@@ -59,53 +60,42 @@ Between scenes and when nothing is on air the video is black and the audio is
 silence; the tracks stay published. The room has an empty-timeout of ten
 minutes, so it exists whenever the projector is up.
 
-**Two data topics,** both JSON in UTF-8:
+**Two data topics** and the room metadata, all JSON:
 
-| Topic | Who sends | What |
+| Channel | Who sends | What |
 | --- | --- | --- |
-| `show.state` | `streamer` only, once a second | The live cursor: what is playing, who wrote it, progress, the next screening's time. Ignore this topic from any other identity. Schema: `viewer/lib/types.ts` (`ShowState`). |
+| `show.state` | `streamer` only, once a second | The live cursor: status, what is playing, who wrote it, progress, when the next screening starts. Ignore it from any other identity. Enough to draw a now-playing card, a countdown, and a curtain. |
+| room metadata | the server, on join and on change | The whole rundown for the current screening: episodes, scenes, credits, line ranges. Enough to draw a programme. |
 | `show.chat` | anyone with `canPublishData` | The shared chat (§3). |
 
-**Room metadata** is the whole rundown for the current screening (episodes,
-scenes, credits), set through the server API so no viewer can write it.
-Schema: `viewer/lib/types.ts` (`Rundown`).
+## 3. The chat
 
-## 3. The chat protocol
-
-One topic, `show.chat`, reliable delivery, one JSON object per packet:
+One topic, `show.chat`, reliable delivery, one JSON object per packet. The
+full field table is in [PROTOCOL.md](./PROTOCOL.md#showchat-the-chat-everyone--everyone);
+what matters for you:
 
 ```json
-{
-  "v": 1,
-  "source": "infinite",
-  "author": "popcorn_pete",
-  "text": "watching from the back row",
-  "user_id": "usr_8f3a",
-  "user_url": "https://theinfinite.tv/u/popcorn_pete"
-}
+{ "v": 1, "source": "infinite", "author": "popcorn_pete", "text": "watching from the back row", "user_id": "usr_8f3a" }
 ```
 
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `author` | yes | The display name, a string of up to 32 characters. Our viewer shows it as typed. |
-| `text` | yes | The message, up to 500 characters. Plain text; our viewer renders nothing but this repository's pull-request links as chips. |
-| `v` | no | Protocol version, `1`. Absent means 1. |
-| `source` | no | Where the line was typed: `"open-slop"` from openslop.live, `"infinite"` from you. Absent means `"open-slop"` (packets from before this field). |
-| `user_id` | no | Your stable id for the author, an opaque string. Every participant receives the packet as sent, so it reaches your other viewers untouched; our viewer ignores it. |
-| `user_url` | no | A profile link on your side. Reserved: our viewer does not render it yet. |
-
-Unknown fields are ignored on both sides, so either of us can add one without
-breaking the other.
+- `author` (up to 32 characters) and `text` (up to 500) are required and shown
+  as typed. Everything else is optional; unknown fields are ignored on both
+  sides, so either of us can add one without breaking the other.
+- Send `source: "infinite"`. Our packets carry `source: "open-slop"`; a packet
+  without one is ours, from before the field.
+- `user_id` is yours: your stable id for the author, opaque to us. Every
+  participant receives the packet as sent, so it reaches your other viewers
+  untouched.
 
 ### Telling the two chats apart
 
 Two signals, and you should trust them in this order:
 
-1. **The sender's LiveKit identity.** Every participant carries one, and the
-   token endpoints fix its shape: `infinite-…` was minted for you, `v-…` for a
-   viewer on openslop.live, `streamer` is the projector. A viewer cannot choose
-   its identity, so this cannot be spoofed. Read it off `participant.identity`
-   in your `DataReceived` handler.
+1. **The sender's LiveKit identity.** The token endpoints fix its shape:
+   `infinite-…` was minted for you, `v-…` for a viewer on openslop.live,
+   `streamer` is the projector. A viewer cannot choose its identity, so this
+   cannot be spoofed. Read it off `participant.identity` in your
+   `DataReceived` handler.
 2. **The `source` tag** in the packet. A convenience for logging and display;
    anyone with a data grant can write anything there, so do not let it override
    the identity.

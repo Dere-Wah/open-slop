@@ -9,7 +9,8 @@ viewer app's server and can never publish media. Tracks are published under
 the model's wire names, `main_video` and `main_audio`.
 
 Chat rides the room's data channel on the `show.chat` topic as JSON
-`{"author": str, "text": str}` packets. The publisher hands every incoming
+packets (`PROTOCOL.md`: `author` and `text` required, `v` and `source`
+tags). The publisher hands every incoming
 chat message to the registered handler (viewer ideas), and `send_chat`
 lets the streamer answer — episode announcements, capacity notes, errors —
 as the author "show".
@@ -126,7 +127,7 @@ class LiveKitPublisher:
 
     def send_chat(self, text: str) -> None:
         """Say something in the room chat as the show. Non-blocking."""
-        self._publish_chat({"author": STREAMER_AUTHOR, "text": text})
+        self._publish_chat({"v": 1, "source": "open-slop", "author": STREAMER_AUTHOR, "text": text})
 
     def publish_state(self, payload: dict) -> None:
         """Publish one `show.state` cursor packet. Non-blocking, best-effort.
