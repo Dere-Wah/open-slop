@@ -95,8 +95,8 @@ that says nothing about sound comes out flat or with a noise it invented. So:
 
 ## Length
 
-`seconds` is one of fourteen legal values from 5.167 to 14.375 (see the
-writing guide). Use the short end, under 8 seconds, only for a transition, an
+`seconds` runs from about 5 to 14; the model rounds it up to the nearest
+length it can make (see the writing guide). Use the short end, under 8 seconds, only for a transition, an
 establishing shot, or a reaction beat. A scene that carries a line of dialogue
 or an action needs 8 seconds or more.
 

@@ -68,7 +68,7 @@ A scene is a `---` header and a prompt.
 | Key | Required | Meaning |
 | --- | --- | --- |
 | `seed` | yes | An integer. Same seed, same clip. |
-| `seconds` | yes | Clip length. One of the [legal lengths](#legal-lengths). |
+| `seconds` | yes | Clip length in seconds. Rounded up to the nearest length the model can make; see [lengths](#lengths). |
 | `continue` | no | `true`: this scene starts from the last frame of the previous one. `false`: it starts fresh, after a cut to black. Default `true`. |
 
 The prompt is the scene, in plain English, 200 to 800 characters. The model sees
@@ -111,16 +111,16 @@ The name on screen is whoever last wrote the scene's words, straight from
 `git blame`. Everyone who touched the scene is listed too. Rewrite a scene and
 it becomes yours; the history is one click away.
 
-## Legal lengths
+## Lengths
 
-`seconds` must be one of:
+Write any number of seconds. The model makes clips in fixed steps, so the value
+is rounded up to the next one it can make, and the bot's report says what will
+play. Those steps are:
 
 ```
 5.167  5.875  6.583  7.292  8.0    8.708  9.417
 10.125 10.833 11.542 12.25  12.958 13.667 14.375
 ```
-
-Pick another and the bot tells you the nearest two.
 
 ## Around here
 

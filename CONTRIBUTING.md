@@ -33,7 +33,8 @@ far off, a buoy bell rings slow, small waves lap against the stone quay.
 ```
 
 - `seed`: any whole number. Same seed, same picture, every screening.
-- `seconds`: one of `5.167 5.875 6.583 7.292 8.0 8.708 9.417 10.125 10.833 11.542 12.25 12.958 13.667 14.375`.
+- `seconds`: how long the clip runs, 5 to 14. The model rounds it up to a length
+  it can make (`8` stays `8.0`, `10` plays as `10.125`); the bot tells you.
 - `continue: true` starts from the last frame of the scene before; `false` cuts
   to black first. Leave it out for `true`.
 - The prompt is 200 to 800 characters of plain English. The model sees only
@@ -68,5 +69,5 @@ to change a scene instead.
 
 ---
 
-Want the details — legal lengths, how the vote is counted, how credit works?
+Want the details — the exact lengths, how the vote is counted, how credit works?
 The [README](./README.md) has them, and [`skills/`](./skills) has the rest.

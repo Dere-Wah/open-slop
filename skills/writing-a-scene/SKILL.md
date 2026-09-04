@@ -1,6 +1,6 @@
 ---
 name: writing-a-scene
-description: Write or edit an OpenSlop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, the legal clip lengths, how to write a prompt the video model renders well (self-contained, sound and quoted dialogue included, 200–800 characters), and how to pass the format checker on the first try.
+description: Write or edit an OpenSlop scene — the episode file format, the seed/seconds/continue header, what `continue` does and why long chains degrade, how lengths round to what the model can make, how to write a prompt the video model renders well (self-contained, sound and quoted dialogue included, 200–800 characters), and how to pass the format checker on the first try.
 ---
 
 # Writing a scene
@@ -57,7 +57,7 @@ broke this way, but the vote is the better place to catch it.
 | Key | Required | Type | Meaning |
 | --- | --- | --- | --- |
 | `seed` | yes | integer ≥ 0, plain digits | Fixes the render. The same seed and prompt always make the same clip, so your scene is reproducible and stable across screenings. Pick any number and keep it. |
-| `seconds` | yes | one of the legal lengths | The clip's length. |
+| `seconds` | yes | a number above zero | The clip's length. Rounded up to the nearest length the model can make; see below. |
 | `continue` | no | exactly `true` or `false` | How this scene joins the previous one. Defaults to `true` when the scene has a predecessor, and to `false` for the very first scene of the whole film. |
 
 Only these three keys, written as `key: value`, one per line. Any other key is
@@ -66,16 +66,18 @@ never took effect. (There is no `length`; the key is `seconds`, because that is
 what the model itself accepts.) Values are read strictly: `seed: 1e3`,
 `seed: 0x10`, `continue: yes` are all errors, not guesses.
 
-## Legal lengths
+## Lengths
 
-`seconds` must be one of these fourteen values (the model can only make these):
+Write any number of seconds. The model makes clips in fixed steps, so your
+value is rounded **up** to the next one and clamped to the range; the bot's
+report says what will play. The lengths it can make are:
 
 ```
 5.167  5.875  6.583  7.292  8.0    8.708  9.417
 10.125 10.833 11.542 12.25  12.958 13.667 14.375
 ```
 
-Pick another and the checker tells you the nearest two. Use the short end,
+So `seconds: 10` plays as 10.125 and `seconds: 3` as 5.167. Use the short end,
 under 8 seconds, only for a transition, an establishing shot, or a reaction
 beat; a scene that carries a line of dialogue or an action needs 8 seconds or
 more. The clip ends when the time is up, mid-sentence if it must.
