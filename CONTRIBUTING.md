@@ -7,8 +7,10 @@ Three steps, all in the browser. No clone, no setup.
 - **New episode** → [create a file on this branch](https://github.com/Dere-Wah/open-slop/new/story?filename=0040-your-title.md).
   Name it `NNNN-your-title.md`. Files play in number order; pick a number
   after the last episode, or in between two to slot one in.
-- **Edit a scene** → open the episode, press <kbd>.</kbd> or the pencil, and
-  change the words. Rewrite it and it becomes yours.
+- **Edit a scene** → press **Edit** next to any scene on
+  [openslop.live](https://openslop.live); the green one is the scene on air.
+  It opens this editor on that scene's lines. Change the words; rewrite it and
+  it becomes yours. (Or open the episode here and press the pencil.)
 
 GitHub forks the repository for you when you save.
 
