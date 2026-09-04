@@ -161,10 +161,14 @@ export function ShowApp() {
           room.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             const fromStreamer = participant?.identity === STREAMER_IDENTITY;
             if (topic === CHAT_TOPIC) {
-              const message = safeParse<{ author?: string; text?: string }>(payload);
-              if (!message) return;
-              let author = String(message.author ?? "").slice(0, 32);
-              const text = String(message.text ?? "").slice(0, 500);
+              // Anyone in the room can send anything here. A packet is a line
+              // only when it is an object whose author and text are strings;
+              // everything else is dropped without a trace.
+              const message = safeParse<{ author?: unknown; text?: unknown }>(payload);
+              if (!message || typeof message !== "object") return;
+              let author =
+                typeof message.author === "string" ? message.author.trim().slice(0, 32) : "";
+              const text = typeof message.text === "string" ? message.text.trim().slice(0, 500) : "";
               // Only the streamer speaks as the show; a viewer who signs as
               // "show" is shown as a viewer with that name, not as the show.
               if (author === SHOW_AUTHOR && !fromStreamer) author = `"${SHOW_AUTHOR}"`;

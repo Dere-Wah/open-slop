@@ -191,10 +191,16 @@ class LiveKitPublisher:
             return
         try:
             message = json.loads(packet.data.decode("utf-8"))
-            author = str(message.get("author", "")).strip()[:32]
-            text = str(message.get("text", "")).strip()[:_CHAT_TEXT_MAX]
         except (ValueError, UnicodeDecodeError):
             return
+        if not isinstance(message, dict):
+            return
+        author = message.get("author")
+        text = message.get("text")
+        if not isinstance(author, str) or not isinstance(text, str):
+            return
+        author = author.strip()[:32]
+        text = text.strip()[:_CHAT_TEXT_MAX]
         if not author or not text or author == STREAMER_AUTHOR:
             return
         self._on_chat(author, text)
