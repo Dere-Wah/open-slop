@@ -65,6 +65,29 @@ MAX_TITLE_CHARS = 120
 MAX_FILENAME_CHARS = 72
 
 _EPISODE_RE = re.compile(r"^\d{4}-[a-z0-9-]+\.md$")
+_EPISODE_SHAPE = (
+    "the shape is NNNN-title-with-dashes.md: four digits, a dash, then a lowercase "
+    "title with dashes for spaces (no capitals or underscores)"
+)
+
+
+def _suggest_episode_name(name: str) -> str | None:
+    """The legal name closest to `name`, or None when none is recoverable.
+
+    `7774-Tung Tung Sahur.md` becomes `7774-tung-tung-sahur.md`; a name with no
+    four-digit prefix gets `0000-` so the author sees where the number goes.
+    """
+    stem = name[:-3] if name.lower().endswith(".md") else name
+    match = re.match(r"^(\d{4})[-_ ]*(.*)$", stem)
+    number, title = match.groups() if match else ("0000", stem)
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    candidate = f"{number}-{slug}.md"
+    return candidate if slug and _EPISODE_RE.match(candidate) else None
+
+
+def _episode_name_hint(name: str) -> str:
+    suggestion = _suggest_episode_name(name)
+    return f"{_EPISODE_SHAPE}. Try `{suggestion}`" if suggestion else _EPISODE_SHAPE
 _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$")
 _INT_RE = re.compile(r"^[0-9]+$")  # ASCII digits only; `\d` would admit other scripts
 _FENCE = "---"
@@ -323,14 +346,7 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
     """
     issues: list[Issue] = []
     if not _EPISODE_RE.match(name):
-        issues.append(
-            Issue(
-                name,
-                None,
-                "episode filename must be NNNN-lower-kebab.md "
-                "(four digits, a dash, then lowercase letters, digits, and dashes)",
-            )
-        )
+        issues.append(Issue(name, None, _episode_name_hint(name)))
     if len(name) > MAX_FILENAME_CHARS:
         issues.append(
             Issue(name, None, f"episode filename is {len(name)} characters; the cap is {MAX_FILENAME_CHARS}")
@@ -598,14 +614,14 @@ def validate_paths(changed: list[Change] | list[str], root: Path | None = None) 
             )
             continue
         if not _is_allowed_root_file(normalized):
-            issues.append(
-                Issue(
-                    raw,
-                    None,
-                    f"{normalized!r} is not an allowed story file (allowed: NNNN-title.md "
-                    "episodes, plus README.md, STYLE.md, LICENSE)",
+            if normalized.lower().endswith(".md") and normalized not in _ROOT_ALLOWLIST:
+                message = f"{normalized!r} is not a legal episode name; {_episode_name_hint(normalized)}"
+            else:
+                message = (
+                    f"{normalized!r} is not an allowed story file; a change may only touch "
+                    "episodes (NNNN-title-with-dashes.md) and README.md, STYLE.md, LICENSE"
                 )
-            )
+            issues.append(Issue(raw, None, message))
             continue
         if len(normalized) > MAX_FILENAME_CHARS:
             issues.append(

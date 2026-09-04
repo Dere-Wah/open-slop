@@ -156,6 +156,19 @@ def test_rejects_bad_filename_via_allowlist():
     assert validate_paths(["0010-ok.md"]) == []
 
 
+def test_bad_episode_name_explains_the_shape_and_suggests_a_fix():
+    [issue] = validate_paths(["7774-Tung Tung Tung Sahur.md"])
+    assert "NNNN-title-with-dashes.md" in issue.message
+    assert "Try `7774-tung-tung-tung-sahur.md`" in issue.message
+    [issue] = validate_paths(["0010_The_Arrival.md"])
+    assert "Try `0010-the-arrival.md`" in issue.message
+    [issue] = validate_paths(["The Arrival.md"])
+    assert "Try `0000-the-arrival.md`" in issue.message
+    # The same hint reaches an author who bypassed the allowlist somehow.
+    _episode_obj, issues = parse_episode("0010-Bad.md", "# T\n\n---\nseed: 1\nseconds: 8\n---\n" + _FRESH)
+    assert any("Try `0010-bad.md`" in i.message for i in issues)
+
+
 def test_rejects_unknown_scene_key():
     text = _episode(f"seed: 1\nseconds: {_LEN}\nlength: 10", _FRESH)
     _film_obj, issues = _film({"0010-a.md": text})
