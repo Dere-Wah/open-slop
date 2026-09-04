@@ -30,14 +30,28 @@ seen them before.
   eyes, a dark wool cap, and a heavy blue coat. Tired and kind. His voice is
   low, gravelly, and slow. He talks to the light as if it listens.
 - **The green light**: a single small green light on the water where no boat
-  should be. It blinks in threes, like a code. It is not friendly and not
-  hostile yet.
+  should be. It blinks three times, pauses, and blinks three times again: a
+  distress call, and it has been calling for nineteen years. It is always far
+  beyond the harbour mouth, out near the horizon on open sea and tiny with
+  distance, never inside the port. It burns in a rusted cage on an old iron
+  lamp-post, and the keeper is the one sending it.
+  He does not know that until the last episode, and neither should a scene set
+  before it.
 - **The town**: a handful of low stone houses, moored fishing boats, a leaning
   wooden water tower. Mostly empty; the town is a mood, not a crowd.
-- **The thing under the water**: never shown. Only what it does to the sea: a
-  long slow swell where no wave should be, a dark mass moving beneath the
-  surface too big to see the edges of, boats rocking, mooring ropes straining.
-  Do not give it a shape, a face, or a name until a scene earns the reveal.
+- **The keeper's boat**: a small open wooden boat with two oars and an oil
+  lantern hooked at the bow. There is a second one, rotted and furred with
+  weed, half-sunk against the black rock. They are the same boat.
+- **The black rock**: a bare black skerry far out on open sea, a long row
+  beyond the harbour mouth, wet and streaming, with the iron lamp-post bolted
+  to its top. Fog, open water, and the dark lighthouse a long way off.
+- **The thing under the water**: never shown, with one exception. Otherwise
+  only what it does to the sea: a long slow swell where no wave should be, a
+  dark mass moving beneath the surface too big to see the edges of, boats
+  rocking, mooring ropes straining. The one reveal it has earned is a single
+  enormous pale eye under the surface, wider than a fishing boat, which blinks
+  once and sinks away. That belongs to the last act. It has no name, no face,
+  and no body we ever see, and it is neither friendly nor hostile.
 
 Add to the cast in a new episode. Once a character lands, describe them the
 same way in every later scene, and add them here in a pull request so the next
