@@ -196,6 +196,16 @@ python3 story-tools/validate.py <path-to-your-story-checkout> --changed 0015-x.m
 It lists every problem at once, with the file and line. A clean run is a clean
 pull request.
 
+If you open the pull request anyway and the check fails, a second bot reads the
+same file and leaves one-click fixes as review suggestions under **Files
+changed**: the header rewritten to `seed` / `seconds` / `continue` (a missing
+`seconds` becomes `8`, a missing `seed` is picked for you), a prompt over 800
+characters cut at its last full sentence with the dropped tail quoted, a `----`
+made `---`, a missing title taken from the filename. Read each before you press
+**Commit suggestion**; the cut it proposes is the shortest legal one, not the
+best one. What it cannot fix (the filename, a prompt under 200 characters) it
+describes in the check's comment instead.
+
 ## What happens after the merge
 
 The projector snapshots the branch about a minute of film before each screening

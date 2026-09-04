@@ -47,7 +47,11 @@ far off, a buoy bell rings slow, small waves lap against the stone quay.
 ## 3. Open the pull request
 
 Click **Propose changes**, then **Create pull request**. A bot checks the
-format within a minute and tells you where your scene lands. Then ask the
+format within a minute and tells you where your scene lands. If something is
+off (a missing `seconds`, a prompt over 800 characters, a header written
+sideways), it also leaves one-click fixes under **Files changed**: read each,
+press **Commit suggestion** on the ones you agree with, and the check runs
+again. Then ask the
 viewers in the chat at [openslop.live](https://openslop.live) to review: they
 approve it like any pull request (**Files changed → Review changes →
 Approve**), and when enough have, it merges by itself. Your scene is on air in

@@ -93,7 +93,9 @@ rename. That is the whole system.
    `STYLE.md`, `LICENSE`. No folders, nothing else (`CONTRIBUTING.md`,
    `AGENTS.md`, and `skills/` are maintained by the project).
 2. A bot checks the format and comments where your episode lands and how long
-   the movie now runs.
+   the movie now runs. When the format is off, it also suggests the fix on
+   the lines themselves; **Commit suggestion** applies it. A filename it
+   cannot fix for you; the comment tells you the name to use.
 3. Anyone can approve it like any pull request: **Files changed → Review
    changes → Approve**. The bot's comment shows how many are needed and how
    long it waits after your last push. Reach it, and it merges by itself.

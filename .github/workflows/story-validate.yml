@@ -65,7 +65,7 @@ jobs:
           # the reviewed one. Move this sha deliberately, after the change to
           # story-tools/ has landed on `code` (see the code branch's
           # skills/story-ci-and-approval).
-          ref: 9a6f419779853f28fad604ec28b9c6bc86f6075d
+          ref: 85a3e511f9c269dcdab7fa0e144afa5b85498924
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false
@@ -102,6 +102,19 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
           cat report.txt
 
+      # The doctor reads the same files as text and works out the smallest
+      # edit that would make each one pass: a header written the one way the
+      # format reads, a prompt cut to the cap at its last full sentence, a
+      # missing fence. Its output is JSON, rendered below as ```suggestion```
+      # review comments the author commits with one click. It never writes to
+      # the branch; a failure here only means no suggestions, so it must not
+      # fail the check.
+      - name: Work out fixes to suggest
+        if: steps.validate.outputs.code == '1'
+        continue-on-error: true
+        run: |
+          python tools/story-tools/doctor.py story-pr --changed-file changed.tsv > doctor.json
+
       - name: Post status and comment
         if: always()
         uses: actions/github-script@v7
@@ -110,6 +123,89 @@ jobs:
         with:
           script: |
             const fs = require("fs");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const doctorMarker = "<!-- open-slop:doctor -->";
+
+            // ------------------------------------------------ the doctor's review
+            // Yesterday's suggestions describe yesterday's file. Drop the bot's
+            // own doctor comments before posting today's, so a contributor never
+            // sees two answers.
+            const oldReviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
+              owner, repo, pull_number, per_page: 100,
+            });
+            for (const c of oldReviewComments) {
+              if (c.user?.login === "github-actions[bot]" && c.body && c.body.includes(doctorMarker)) {
+                await github.rest.pulls.deleteReviewComment({ owner, repo, comment_id: c.id }).catch(() => {});
+              }
+            }
+
+            let doctor = { files: [] };
+            try {
+              if (fs.existsSync("doctor.json")) doctor = JSON.parse(fs.readFileSync("doctor.json", "utf8"));
+            } catch (_) {
+              doctor = { files: [] };
+            }
+            const suggestions = doctor.files.flatMap((f) => f.suggestions ?? []);
+            const notes = doctor.files.flatMap((f) => f.notes ?? []);
+            const remaining = doctor.files.flatMap((f) => (f.remaining ?? []).map((m) => `\`${f.path}\` — ${m}`));
+
+            // A suggestion block replaces the commented lines with its body; an
+            // empty body deletes them. Prose can hold backticks, so the fence is
+            // one longer than the longest run inside.
+            function suggestionBody(s) {
+              const runs = s.replacement.match(/`+/g) ?? [];
+              const fence = "`".repeat(Math.max(3, ...runs.map((r) => r.length + 1)));
+              const block = s.replacement === "" ? `${fence}suggestion\n${fence}` : `${fence}suggestion\n${s.replacement}\n${fence}`;
+              return `${s.why}\n\n${block}\n${doctorMarker}`;
+            }
+
+            let posted = 0;
+            let inlineFailed = false;
+            if (suggestions.length) {
+              const comments = suggestions.map((s) => {
+                const c = { path: s.path, line: s.end_line, side: "RIGHT", body: suggestionBody(s) };
+                if (s.start_line < s.end_line) Object.assign(c, { start_line: s.start_line, start_side: "RIGHT" });
+                return c;
+              });
+              try {
+                await github.rest.pulls.createReview({
+                  owner, repo, pull_number,
+                  commit_id: context.payload.pull_request.head.sha,
+                  event: "COMMENT",
+                  body: `🩺 ${comments.length} suggested fix${comments.length === 1 ? "" : "es"} below. Each is a one-click commit (**Commit suggestion**, or **Add suggestion to batch** to take several at once); take the ones you agree with. Committing one restarts the approval clock. ${doctorMarker}`,
+                  comments,
+                });
+                posted = comments.length;
+              } catch (error) {
+                core.warning(`could not post inline suggestions: ${error.message}`);
+                inlineFailed = true;
+              }
+            }
+
+            function doctorSection() {
+              const out = [];
+              if (posted) {
+                out.push(
+                  `🩺 **${posted} suggested fix${posted === 1 ? "" : "es"}** are waiting in **Files changed**, one per problem the doctor could solve. Press **Commit suggestion** on each you agree with (or batch them); the check re-runs on its own.`,
+                );
+              }
+              if (inlineFailed && suggestions.length) {
+                out.push("🩺 **Suggested fixes** (they could not be attached to the lines, so here they are in full):");
+                for (const s of suggestions) {
+                  const where = s.start_line === s.end_line ? `line ${s.start_line}` : `lines ${s.start_line}–${s.end_line}`;
+                  out.push("", `**\`${s.path}\`, ${where}** — ${s.why}`, "", "```", s.replacement === "" ? "(delete these lines)" : s.replacement, "```");
+                }
+              }
+              if (notes.length) {
+                out.push("", "✍️ **Only you can fix these:**", ...notes.map((n) => `- ${n.body}`));
+              }
+              if (remaining.length) {
+                out.push("", "After the suggestions, the check would still say:", ...remaining.map((m) => `- ${m}`));
+              }
+              return out.join("\n");
+            }
             // An empty code means a step before the validator failed: the
             // check did not run, and the contributor must not be told their
             // scene is wrong. Say so, and mark the status as an error, not a
@@ -173,11 +269,13 @@ jobs:
                   marker,
                   ok ? "### ✅ Format check passed" : `### ❌ Format check found ${problems} problem(s)`,
                   "",
-                  asMarkdown(report).slice(0, 60_000),
+                  asMarkdown(report).slice(0, 50_000),
                   "",
                   ok
                     ? "🗳️ Once enough people approve it (see the **Audience vote** comment) and the wait after your last push has passed, it merges on its own."
-                    : "🔧 Fix the problems above and push again; this re-runs automatically.",
+                    : [doctorSection(), "🔧 Fix the problems above and push again; this re-runs automatically."]
+                        .filter(Boolean)
+                        .join("\n\n"),
                 ].join("\n");
 
             // The sticky comment is the bot's own. A contributor who pastes
@@ -221,7 +319,7 @@ jobs:
       - name: Fetch the validator from the code branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: 9a6f419779853f28fad604ec28b9c6bc86f6075d
+          ref: 85a3e511f9c269dcdab7fa0e144afa5b85498924
           path: tools
           sparse-checkout: story-tools
           persist-credentials: false

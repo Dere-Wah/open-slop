@@ -77,7 +77,11 @@ and the screen names you; the history is one click away.
 
 1. Add or edit an episode file; open a pull request.
 2. The format check comments what it found, where your episode lands, and the
-   film's new runtime.
+   film's new runtime. For each problem it can solve it posts a review
+   suggestion on the lines (a header made legal, a prompt cut to the cap at
+   its last full sentence, a fence repaired); **Commit suggestion** applies
+   it as a commit of yours, which resets the vote like any push. A rename or
+   a prompt under the floor it can only describe.
 3. People approve it with a review. The tally comment shows what is still needed.
 4. Quorum reached, wait over, no `/block`: it merges itself.
 5. The projector snapshots the branch shortly before each screening. Your scene
