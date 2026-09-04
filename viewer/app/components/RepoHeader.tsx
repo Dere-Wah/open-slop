@@ -10,6 +10,7 @@ import {
   PlayIcon,
   RepoIcon,
   StarIcon,
+  XIcon,
 } from "./Icons";
 import {
   commitsUrl,
@@ -19,6 +20,7 @@ import {
   treeUrl,
   type RepoRef,
 } from "@/lib/github";
+import { SITE } from "@/lib/site";
 
 export type Connection = "connecting" | "live" | "offline";
 
@@ -96,6 +98,16 @@ export function RepoHeader({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={SITE.announcement}
+              target="_blank"
+              rel="noreferrer"
+              className="gh-btn"
+              title="The announcement on X"
+              aria-label="The announcement on X"
+            >
+              <XIcon className="text-fg-muted" />
+            </a>
             <a href={treeUrl(repo)} target="_blank" rel="noreferrer" className="gh-btn">
               <BookIcon className="text-fg-muted" />
               <span className="hidden sm:inline">Read the screenplay</span>

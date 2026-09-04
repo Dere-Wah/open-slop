@@ -10,6 +10,7 @@ export const SITE = {
   owner: "Dere-Wah",
   repo: "open-slop",
   branch: "story",
+  announcement: "https://x.com/DereWah/status/2095610796348702862",
   title: "OpenSlop | The First Ever Open Source Movie",
   description:
     "A movie written by its audience, screened around the clock. The screenplay is a branch on GitHub: add a scene in a pull request, get it approved, and it is on air in the next screening.",

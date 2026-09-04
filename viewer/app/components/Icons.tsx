@@ -40,6 +40,15 @@ export function MarkGithubIcon(props: IconProps) {
   );
 }
 
+/** The X (Twitter) logo, drawn on the 16-unit Octicon grid. */
+export function XIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12.6 1.5h2.2L10 7.03 15.7 14.5h-4.46L7.75 9.94 3.76 14.5H1.55l5.14-5.88L1.2 1.5h4.57l3.15 4.17ZM11.83 13.2h1.22L5.23 2.74H3.92Z" />
+    </Icon>
+  );
+}
+
 export function StarIcon(props: IconProps) {
   return (
     <Icon {...props}>
