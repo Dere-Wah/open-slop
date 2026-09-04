@@ -46,6 +46,22 @@ Actions as their only accepted source, so nobody can hand-post a green one.
    marker does not hand the bot a comment to overwrite.
 4. **`persist-credentials: false`** on every checkout; the token is never left
    on disk next to PR data.
+5. **The fork checkout is opted in, and pinned.** `actions/checkout` v4.4+
+   refuses a fork's head under `pull_request_target` unless the step sets
+   `allow-unsafe-pr-checkout: true`, because most workflows execute what they
+   fetch. `story-validate` sets it on the `story-pr` step and nowhere else,
+   and the reason it is safe is invariant 1: nothing in `story-pr` is ever
+   run, imported, or installed. Every `actions/checkout` use is pinned to a
+   full commit sha (with the version in a trailing comment); a floating `@v4`
+   is what silently changed under us and failed every story PR for a night,
+   with the bot then telling contributors "found 0 problem(s)". Move the pin
+   deliberately, and re-read this list when you do.
+
+The report step distinguishes "the validator ran and found problems"
+(`story/validate` = `failure`, the list of problems) from "a step before it
+failed" (`story/validate` = `error`, a comment saying the check itself broke
+and a maintainer will look). A contributor must never be blamed for our
+workflow failing.
 
 **The tally comment's screenshot strip** (how to click Approve) is
 `assets/how-to-approve.png` on this branch, embedded by URL:
