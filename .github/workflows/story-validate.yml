@@ -188,7 +188,9 @@ jobs:
               const out = [];
               if (posted) {
                 out.push(
-                  `🩺 **${posted} suggested fix${posted === 1 ? "" : "es"}** are waiting in **Files changed**, one per problem the doctor could solve. Press **Commit suggestion** on each you agree with (or batch them); the check re-runs on its own.`,
+                  posted === 1
+                    ? "🩺 **1 suggested fix** is waiting in **Files changed**. Read it, and if you agree press **Commit suggestion**; the check re-runs on its own."
+                    : `🩺 **${posted} suggested fixes** are waiting in **Files changed**, one per problem the doctor could solve. Press **Commit suggestion** on each you agree with (or batch them); the check re-runs on its own.`,
                 );
               }
               if (inlineFailed && suggestions.length) {
@@ -199,7 +201,8 @@ jobs:
                 }
               }
               if (notes.length) {
-                out.push("", "✍️ **Only you can fix these:**", ...notes.map((n) => `- ${n.body}`));
+                if (out.length) out.push("");
+                out.push("✍️ **Only you can fix these:**", ...notes.map((n) => `- ${n.body}`));
               }
               if (remaining.length) {
                 out.push("", "After the suggestions, the check would still say:", ...remaining.map((m) => `- ${m}`));
