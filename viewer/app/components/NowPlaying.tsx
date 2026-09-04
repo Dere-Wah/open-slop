@@ -3,14 +3,20 @@
 import type { ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { GitCommitIcon } from "./Icons";
+import { EditButton } from "./Rundown";
+import { editUrl, linesOf, type RepoRef } from "@/lib/github";
 import { safeHttpUrl } from "@/lib/safeUrl";
 import type { RundownScene, ShowState } from "@/lib/types";
 
 /**
  * The bar under the player, shaped like the latest-commit row atop a GitHub
  * file list: who wrote the scene on air, which episode and scene it is, and
- * the commit it came from. When the next screening starts is the rundown's
- * footer, not this bar's — a ticking countdown here read as a deadline.
+ * the commit it came from, and at its right end the page's loudest invitation:
+ * a green Edit scene button that opens GitHub's editor on the lines that are
+ * on air right now. The lines come from the projector's cursor (the snapshot
+ * the screening was read from), falling back to the rundown's copy. When the
+ * next screening starts is the rundown's footer, not this bar's — a ticking
+ * countdown here read as a deadline.
  *
  * While the curtain is down the same bar says what is being waited for — the
  * buffer filling, the pause between two screenings, the projector
@@ -19,10 +25,12 @@ import type { RundownScene, ShowState } from "@/lib/types";
 export function NowPlaying({
   state,
   scene,
+  repo,
   offAir,
 }: {
   state: ShowState | null;
   scene: RundownScene | null;
+  repo: RepoRef;
   offAir: boolean;
 }) {
   if (offAir || !state) {
@@ -115,6 +123,8 @@ export function NowPlaying({
   const authorUrl = safeHttpUrl(state.author_url);
   const commitUrl = safeHttpUrl(state.commit_url);
   const extra = scene ? Math.max(0, scene.contributors.length - 1) : 0;
+  const lines = linesOf(state.line_start, state.line_end) ?? scene?.lines ?? null;
+  const file = state.episode_file;
 
   return (
     <Bar tone="default">
@@ -152,6 +162,19 @@ export function NowPlaying({
           </span>
         )}
       </div>
+      {file && (
+        <EditButton
+          href={editUrl(repo, file, lines)}
+          title={
+            lines
+              ? `Edit this scene: lines ${lines[0]}-${lines[1]} of ${file} as of ${state.sha ?? "the current snapshot"}`
+              : `Edit ${file} on GitHub`
+          }
+          primary
+          label="Edit scene"
+          className="h-7 px-2.5 text-xs sm:text-sm"
+        />
+      )}
     </Bar>
   );
 }

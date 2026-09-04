@@ -51,6 +51,25 @@ export function blobUrl(ref: RepoRef, path: string): string {
   return `${repoUrl(ref)}/blob/${encodeURIComponent(ref.branch)}/${encodeURIComponent(path)}`;
 }
 
+/**
+ * GitHub's in-browser editor on the branch, with the scene's prose lines
+ * highlighted so a contributor lands on the words. The range is 1-based and
+ * inclusive; `?plain=1` keeps Markdown from rendering so the anchor resolves.
+ * Editing is only possible on a branch, never at a commit, so the lines are
+ * those of the screening's snapshot and can drift if the branch has moved
+ * since; a caller shows the snapshot's sha next to the link for that reason.
+ */
+export function editUrl(ref: RepoRef, path: string, lines?: [number, number] | null): string {
+  const base = `${repoUrl(ref)}/edit/${encodeURIComponent(ref.branch)}/${encodeURIComponent(path)}?plain=1`;
+  return lines && lines[0] > 0 ? `${base}#L${lines[0]}-L${Math.max(lines[0], lines[1])}` : base;
+}
+
+/** The scene's prose lines in the episode file, or null when the payload lacks them. */
+export function linesOf(start: unknown, end: unknown): [number, number] | null {
+  if (typeof start !== "number" || typeof end !== "number" || start <= 0) return null;
+  return [start, Math.max(start, end)];
+}
+
 export function readmeUrl(ref: RepoRef): string {
   return blobUrl(ref, "README.md");
 }

@@ -95,6 +95,7 @@ export function ShowPage({
           <NowPlaying
             state={offAir ? null : showState}
             scene={currentScene}
+            repo={repo}
             offAir={offAir}
           />
         </div>

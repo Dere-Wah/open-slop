@@ -28,6 +28,7 @@ function scene(n: number, seed: number): RundownScene {
     author_url: login ? `https://github.com/${login}` : null,
     commit: sha,
     commit_url: `https://github.com/Dere-Wah/open-slop/commit/${sha}`,
+    lines: [3 + (n - 1) * 15 + 4, 3 + (n - 1) * 15 + 13],
     contributors:
       seed % 4 === 0
         ? [
@@ -129,6 +130,7 @@ export function PreviewApp({
           scene_number: currentScene.n, scene_count: current.scenes.length,
           author: currentScene.author, author_url: currentScene.author_url,
           commit: currentScene.commit, commit_url: currentScene.commit_url,
+          line_start: currentScene.lines?.[0], line_end: currentScene.lines?.[1],
           now, ends_at: now + 4 * 60_000 + 12_000, next_start_at: now + 4 * 60_000 + 32_000,
           stalled: false, progress: 0.37,
         };

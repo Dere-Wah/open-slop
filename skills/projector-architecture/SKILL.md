@@ -194,7 +194,15 @@ Two payloads, both owned by `broadcast.py`:
   starts — or at snapshot when nothing is on air, so the curtain can show the
   programme (the viewer must never see a pre-rolled film described as the one
   on air). It carries every episode and scene with
-  its credit and links, no prompt bodies. LiveKit caps metadata; the payload is
+  its credit and links, no prompt bodies. Each scene also carries `lines`, the
+  1-based inclusive range of its prose in the episode file at the rundown's
+  `sha` (the validator's `body_line_start`/`body_line_end`; the `---` fences
+  and the header stay out). The live cursor repeats it as
+  `line_start`/`line_end`, read off the clip tag (`ls`/`le`), so the viewer
+  can open GitHub's editor on exactly the lines on air without a GitHub call.
+  GitHub edits on a branch, never at a commit, so the range can drift once the
+  branch moves past the snapshot; the viewer names the sha next to the link.
+  LiveKit caps metadata; the payload is
   cut by degrees to `_METADATA_BUDGET_BYTES` — contributors first, then
   episodes from the tail with `truncated: true` — and the viewer says so.
 

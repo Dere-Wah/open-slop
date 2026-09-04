@@ -80,6 +80,11 @@ class Scene:
     author: Person
     commit: str  # short sha of the newest commit on this scene's body
     commit_url: str | None
+    # The prose lines in `episode_file` at `Rundown.sha`, 1-based and inclusive:
+    # what an edit link highlights. The header and its fences stay out so a
+    # contributor lands on the words, not on the `---` they tend to break.
+    line_start: int = 0
+    line_end: int = 0
     contributors: list[Person] = field(default_factory=list)
 
 
@@ -269,6 +274,8 @@ class StorySource:
                     author=author,
                     commit=commit[:7] if commit else "",
                     commit_url=commit_url,
+                    line_start=scene.body_line_start,
+                    line_end=scene.body_line_end,
                     contributors=contributors,
                 )
                 r_episode.scenes.append(card)

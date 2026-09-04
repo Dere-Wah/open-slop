@@ -2,9 +2,17 @@
 
 import { useMemo, useRef, useState, type Ref } from "react";
 import { Avatar } from "./Avatar";
-import { ChevronRightIcon, ClockIcon, FileIcon, GitCommitIcon, ListIcon, SearchIcon } from "./Icons";
+import {
+  ChevronRightIcon,
+  ClockIcon,
+  FileIcon,
+  GitCommitIcon,
+  ListIcon,
+  PencilIcon,
+  SearchIcon,
+} from "./Icons";
 import { formatClock, formatDuration } from "@/lib/format";
-import { blobUrl, type RepoRef } from "@/lib/github";
+import { blobUrl, editUrl, type RepoRef } from "@/lib/github";
 import { safeHttpUrl } from "@/lib/safeUrl";
 import type { Rundown as RundownData, RundownEpisode, ShowState } from "@/lib/types";
 
@@ -13,7 +21,11 @@ import type { Rundown as RundownData, RundownEpisode, ShowState } from "@/lib/ty
  * repository page: one row per episode, each expanding to its scenes, the
  * scene on air highlighted. Every episode links to its file and every scene
  * to its commit, so this is also the credits — who wrote what, assembled from
- * git, with GitHub avatars for the people who have one.
+ * git, with GitHub avatars for the people who have one. Every episode and
+ * every scene carries an Edit button into GitHub's editor: the episode's opens
+ * the file, the scene's lands on its prose lines (the header fences left out),
+ * and the scene on air gets the green one. The lines are those of the
+ * screening's snapshot, so the row shows which sha they belong to.
  *
  * It reads entirely off LiveKit room metadata; nothing here calls GitHub.
  *
@@ -144,6 +156,7 @@ export function Rundown({
                 ref={isCurrent ? currentRef : null}
                 episode={episode}
                 repo={repo}
+                sha={rundown.sha}
                 isCurrent={isCurrent}
                 currentScene={isCurrent ? currentScene : undefined}
                 expanded={open[episode.file] ?? isCurrent}
@@ -208,6 +221,7 @@ function EpisodeRow({
   ref,
   episode,
   repo,
+  sha,
   isCurrent,
   currentScene,
   expanded,
@@ -216,6 +230,7 @@ function EpisodeRow({
   ref: Ref<HTMLLIElement> | null;
   episode: RundownEpisode;
   repo: RepoRef;
+  sha: string;
   isCurrent: boolean;
   currentScene?: number;
   expanded: boolean;
@@ -251,6 +266,11 @@ function EpisodeRow({
             <span className="gh-counter shrink-0 bg-success-subtle text-success">on air</span>
           )}
         </button>
+        <EditButton
+          href={editUrl(repo, episode.file)}
+          title={`Edit ${episode.file} on GitHub`}
+          primary={false}
+        />
         <span className="hidden shrink-0 items-center -space-x-1.5 sm:flex" title={authors.join(", ")}>
           {authors.slice(0, 4).map((name) => (
             <Avatar key={name} name={name} size={20} />
@@ -286,7 +306,7 @@ function EpisodeRow({
               >
                 <span className="w-7 shrink-0 font-mono text-xs text-fg-subtle">{scene.n}</span>
                 <Avatar name={scene.author} url={scene.author_url} size={16} />
-                <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
                   {authorUrl ? (
                     <a
                       href={authorUrl}
@@ -305,6 +325,16 @@ function EpisodeRow({
                     </span>
                   )}
                   {active && <span className="text-xs text-success">· playing</span>}
+                  <EditButton
+                    href={editUrl(repo, episode.file, scene.lines)}
+                    title={
+                      scene.lines
+                        ? `Edit scene ${scene.n}: lines ${scene.lines[0]}-${scene.lines[1]} of ${episode.file} as of ${sha}`
+                        : `Edit ${episode.file} on GitHub`
+                    }
+                    primary={active}
+                    className="ml-1 self-center"
+                  />
                 </span>
                 <span className="hidden w-24 shrink-0 items-center justify-end gap-1 font-mono text-xs text-fg-muted md:flex">
                   {scene.commit &&
@@ -341,6 +371,41 @@ function EpisodeRow({
         </ol>
       )}
     </li>
+  );
+}
+
+/**
+ * The pencil into GitHub's editor. Green for the scene on air, so the page's
+ * standing invitation ("change what you are watching") is the one thing that
+ * glows in the list; grey everywhere else.
+ */
+export function EditButton({
+  href,
+  title,
+  primary,
+  label = "Edit",
+  className = "",
+}: {
+  href: string;
+  title: string;
+  primary: boolean;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={title}
+      aria-label={title}
+      className={`gh-btn h-6 shrink-0 gap-1 px-2 text-xs hover:no-underline ${
+        primary ? "gh-btn-primary" : ""
+      } ${className}`}
+    >
+      <PencilIcon size={12} className={primary ? "" : "text-fg-muted"} />
+      <span>{label}</span>
+    </a>
   );
 }
 

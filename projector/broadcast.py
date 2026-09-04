@@ -76,6 +76,8 @@ class Cursor:
     author_url: str | None
     commit: str
     commit_url: str | None
+    line_start: int  # the scene's lines in `episode_file` at `sha`, for the edit link
+    line_end: int
     started_wall: float  # epoch seconds when this clip started playing
     clip_seconds: float
     remaining_after: float  # seconds of film after this scene, this screening
@@ -275,6 +277,8 @@ class Broadcast:
             "author_url": cursor.author_url,
             "commit": cursor.commit,
             "commit_url": cursor.commit_url,
+            "line_start": cursor.line_start,
+            "line_end": cursor.line_end,
             "now": _ms(now),
             "ends_at": _ms(ends_at),
             "next_start_at": _ms(ends_at + cursor.intermission_seconds),
@@ -353,6 +357,7 @@ def _rundown_dict(screening_id: int, rundown: Rundown, *, contributors: bool) ->
                 "author_url": scene.author.url,
                 "commit": scene.commit,
                 "commit_url": scene.commit_url,
+                "lines": [scene.line_start, scene.line_end],
                 "contributors": (
                     [{"name": person.display, "url": person.url} for person in scene.contributors]
                     if contributors

@@ -47,6 +47,10 @@ export interface ShowState {
   author_url?: string | null;
   commit?: string;
   commit_url?: string | null;
+  // The scene's prose lines in `episode_file` at `sha`, 1-based inclusive;
+  // header fences excluded. Absent or 0 from a projector that predates them.
+  line_start?: number;
+  line_end?: number;
   now: number; // server epoch ms, for clock-skew correction
   ends_at?: number; // server epoch ms when this screening's last frame is out
   next_start_at?: number; // … plus the intermission: when the next screening starts
@@ -66,6 +70,7 @@ export interface RundownScene {
   author_url: string | null;
   commit: string;
   commit_url: string | null;
+  lines?: [number, number]; // the prose lines in the episode file at `Rundown.sha`
   contributors: Contributor[];
 }
 
