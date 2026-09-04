@@ -1,23 +1,38 @@
 "use client";
 
-import { EyeIcon, ReactorMark } from "./Icons";
+import { EyeIcon, PencilIcon, ReactorMark } from "./Icons";
+import { editUrl, linesOf, type RepoRef } from "@/lib/github";
 import type { ShowState } from "@/lib/types";
 
 /**
  * The little that is drawn over the picture while the film plays: an
  * "On air" chip top-left with how many are watching beside it (from the
  * room's own participant list), a "Running on Reactor" chip top-right (the model
- * rendering the picture, linking to reactor.inc), and an intermission ribbon
- * when the show is holding between scenes. Both chips are the same small,
- * translucent shape, so the badge reads as a broadcaster's bug rather than
- * an advert. What is playing, who wrote it, and its commit sit under the player
- * in the now-playing bar, where they are readable and clickable without
- * covering the frame. Everything else — loading, warming,
+ * rendering the picture, linking to reactor.inc), an intermission ribbon
+ * when the show is holding between scenes, and on a desktop an "Edit this
+ * scene" button bottom-left that opens GitHub's editor on the playing scene's
+ * lines. Both chips are the same small, translucent shape, so the badge reads
+ * as a broadcaster's bug rather than an advert. The edit button is the one
+ * solid thing on the frame, because it is the one thing a viewer is asked to
+ * do; on a phone the frame is too small to share, so the same button lives
+ * only in the now-playing bar there. What is playing, who wrote it, and its
+ * commit sit under the player in the now-playing bar, where they are readable
+ * and clickable without covering the frame. Everything else — loading, warming,
  * downtime, off air — is the curtain's, which replaces this overlay whenever
  * nothing is on air.
  */
-export function Overlay({ state, viewers }: { state: ShowState | null; viewers: number | null }) {
+export function Overlay({
+  state,
+  viewers,
+  repo,
+}: {
+  state: ShowState | null;
+  viewers: number | null;
+  repo: RepoRef;
+}) {
   if (!state || state.status !== "live") return null;
+  const file = state.episode_file;
+  const lines = linesOf(state.line_start, state.line_end);
 
   return (
     <>
@@ -49,6 +64,23 @@ export function Overlay({ state, viewers }: { state: ShowState | null; viewers: 
           Running on <span className="font-semibold text-fg">Reactor</span>
         </span>
       </a>
+
+      {file && (
+        <a
+          href={editUrl(repo, file, lines)}
+          target="_blank"
+          rel="noreferrer"
+          title={
+            lines
+              ? `Edit this scene: lines ${lines[0]}-${lines[1]} of ${file} as of ${state.sha ?? "the current snapshot"}`
+              : `Edit ${file} on GitHub`
+          }
+          className="gh-btn gh-btn-primary absolute bottom-3 left-3 hidden h-8 gap-1.5 px-3 text-xs shadow-md hover:no-underline sm:inline-flex"
+        >
+          <PencilIcon size={14} />
+          <span>Edit this scene</span>
+        </a>
+      )}
 
       {state.stalled && (
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">

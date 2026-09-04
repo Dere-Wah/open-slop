@@ -83,7 +83,7 @@ export function ShowPage({
             progress={onAir ? showState?.progress : undefined}
             overlay={
               onAir ? (
-                <Overlay state={showState} viewers={viewers} />
+                <Overlay state={showState} viewers={viewers} repo={repo} />
               ) : connection === "live" ? (
                 <Curtain state={showState} rundown={rundown} offAir={offAir} />
               ) : null
