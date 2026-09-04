@@ -111,6 +111,38 @@ neighbours), its scene count and runtime, and the film's new total. CI posts
 this into the pull request; it is the contributor's confirmation that the
 ordering they intended is the one they got.
 
+## The doctor (`doctor.py`)
+
+The validator says no; the doctor says what would make it yes. When a pull
+request fails the check, CI runs `doctor.py ROOT --changed-file changed.tsv`
+over the same files and posts each fix as a ```` ```suggestion ```` review
+comment, which the author commits with one click. The doctor never writes to
+the branch, never runs anything from it, and every suggestion is applied in
+memory and re-read with `parse_episode` before it is offered; what still fails
+after that is listed in the report as `remaining`.
+
+What it fixes, and how:
+
+| Problem | Suggestion |
+| --- | --- |
+| A header the validator refuses: missing `seconds`, missing `seed`, a key under another name (`length`, `secs`, `cont`), `=` for `:`, quotes, `yes`/`no`, a repeat, an unknown key | One replacement of the header lines: `seed`, `seconds`, and `continue` only. A missing `seconds` becomes `8`; a missing `seed` is drawn from a hash of the prose, so a second run agrees with the first. `continue: true` on the film's first scene is dropped. |
+| Prompt over `MAX_PROMPT_CHARS` | The prose lines replaced by the collapsed prompt cut at the last full sentence that fits (word boundary plus `.` when no sentence end leaves the floor standing), re-wrapped at 80 columns; the comment quotes what was dropped. |
+| No header at all before the prose; a fence followed straight by prose | A header inserted (before the first prose line, or after the lone fence). |
+| A short paragraph after a `---` inside a scene | The fence deleted: a row of dashes was a rule, not a scene break. A long one (≥ the floor) gets its own header instead. |
+| `----` or other dash rows as fences; a title without `#`; `#Title`; a prose line starting with `#`; no title | The line rewritten; a missing title is made from the filename. |
+
+What it cannot fix becomes a note in the sticky comment: a filename (a
+suggestion cannot rename; the note gives the exact `NNNN-title.md` to use), a
+prompt under the floor (only the author has the words), a header with nothing
+after it.
+
+Its heuristics are in one place each: `_looks_like_header` (every line
+`key: value` and at least one known key, so a prompt opening with `Sound:` is
+prose), `normalize_header`, `truncate_prompt`, `fixed_name`. Tests are in
+`test_doctor.py`; each ends by asserting the validator accepts the healed file.
+The workflow side (deleting the previous run's comments, the inline-or-fallback
+posting) is in `story-ci-and-approval`.
+
 ## Changing a rule
 
 1. Change `validate.py`. Keep the change data-driven where the code already is
@@ -125,6 +157,8 @@ ordering they intended is the one they got.
    piece of work.
 4. If the projector reads the field (`seed`, `seconds`, `continue`, the blame
    range), check `projector/story.py` and `screening.py` still agree.
-5. The story branch's workflows check this branch out **at a ref**. Until the
+5. Teach `doctor.py` the fix, or make sure the failure lands as a note, and
+   add a test in `test_doctor.py` that heals a file breaking the new rule.
+6. The story branch's workflows check this branch out **at a ref**. Until the
    pinned sha in `story-validate.yml` moves, CI runs the old validator; see
    `story-ci-and-approval`.

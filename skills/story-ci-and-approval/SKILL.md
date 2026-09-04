@@ -24,7 +24,7 @@ maintainer commit on `story` (admins bypass the ruleset for exactly this), made
 
 | Workflow | Trigger | Posts |
 | --- | --- | --- |
-| `story-validate` | `pull_request_target` on `story`; `push` to `story` | commit status `story/validate`; sticky comment with the report; on push, an issue when the tip does not validate |
+| `story-validate` | `pull_request_target` on `story`; `push` to `story` | commit status `story/validate`; sticky comment with the report; on a failing pull request, a review of one-click `suggestion` fixes from `story-tools/doctor.py`; on push, an issue when the tip does not validate |
 | `story-quorum` | `issue_comment` (created/edited/deleted); `pull_request_target` opened/reopened/synchronize; cron every 5 minutes (the review event cannot be used from forks; see below) | commit status `story/quorum`; sticky tally comment; keeps auto-merge armed |
 | `story-welcome` | `pull_request_target` opened | one greeting comment with the rules |
 
@@ -75,6 +75,33 @@ annotations under `GITHUB_ACTIONS` so problems show inline on the diff. Both
 `story-validate` comment steps run that text through `asMarkdown()`, which
 turns each annotation into a list item and drops the count line, so a reader
 never sees the `::error` syntax.
+
+**The doctor's review.** When the validator exits 1, a `continue-on-error`
+step runs `story-tools/doctor.py` over the same `story-pr` tree (data only,
+same invariants; the doctor is part of the pinned checkout) and writes
+`doctor.json`. The comment step then:
+
+1. deletes every review comment by `github-actions[bot]` that carries
+   `<!-- open-slop:doctor -->`, so the previous push's suggestions do not sit
+   beside the new ones;
+2. posts one review (`event: COMMENT`, `commit_id` = the head sha) with one
+   inline comment per suggestion: `path`, `line` = the range's last line, `side:
+   RIGHT`, plus `start_line`/`start_side` for a multi-line range, and a body of
+   the doctor's sentence followed by a ```` ```suggestion ```` block (an empty
+   block deletes the lines; the fence grows past any backtick run in the
+   prose). A comment may sit on a line outside the diff;
+3. if that call fails (a 422 on a line GitHub will not take), falls back to
+   printing the same suggestions in full in the sticky comment, so the author
+   still gets them;
+4. adds a section to the sticky comment: how many suggestions are waiting in
+   **Files changed**, the notes for what only the author can fix (renames,
+   prompts under the floor), and what the validator would still say after every
+   suggestion is taken.
+
+A committed suggestion is authored by the person who clicked, with the bot as
+`Co-authored-by`; `projector/story.py` drops `[bot]` co-authors so the credit
+stays with the writer. Committing one is a push like any other: the quorum
+tally and the cooldown clock reset.
 
 ## The vote (`story-quorum`)
 

@@ -132,7 +132,7 @@ export function RepoHeader({
               title="Star the repository on GitHub"
             >
               <StarIcon className="text-fg-muted" />
-              <span>Star</span>
+              <span className="hidden sm:inline">Star</span>
             </a>
             <AgentButton repo={repo} />
           </div>

@@ -19,6 +19,8 @@ jobs:
           python-version: "3.12"
       - name: Validator tests
         run: python story-tools/test_validate.py
+      - name: Doctor tests
+        run: python story-tools/test_doctor.py
       - name: Projector compiles
         run: python -m py_compile projector/*.py story-tools/*.py
 

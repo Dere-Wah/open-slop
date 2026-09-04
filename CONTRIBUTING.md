@@ -20,6 +20,7 @@ changing. Before opening a pull request:
 
 ```bash
 python3 story-tools/test_validate.py            # the validator's tests pass
+python3 story-tools/test_doctor.py              # so do the doctor's
 python3 -m py_compile projector/*.py story-tools/*.py
 cd viewer && pnpm install && pnpm build          # the viewer builds
 ```
@@ -32,6 +33,11 @@ Guidelines:
   branch's `skills/writing-a-scene` or `skills/how-approval-works` in the same
   piece of work — never let the two drift. The procedure is in
   `skills/story-format-validator`.
+- **`story-tools/doctor.py` follows the validator, never leads it.** It
+  proposes the smallest edit that makes a refused file pass, and every
+  proposal is re-read by the validator before it is offered. A new rule in
+  the validator gets a matching fix in the doctor (or a note saying only the
+  author can fix it) and a test in `test_doctor.py`.
 - **Keep the story-branch workflows thin.** They check this branch's
   `story-tools/` out at a pinned ref and run it. The logic that decides whether
   a story pull request may merge must stay here, on a branch a story

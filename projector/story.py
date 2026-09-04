@@ -108,6 +108,11 @@ class Rundown:
     total_seconds: float = 0.0
 
 
+def _is_bot(person: Person) -> bool:
+    """GitHub Apps sign as `name[bot]` with a `<id>+name[bot]@users.noreply` email."""
+    return person.name.endswith("[bot]") or (person.login or "").endswith("[bot]")
+
+
 def _person_from_commit(name: str, email: str) -> Person:
     """Resolve a git author to a Person, reading a GitHub login off a noreply."""
     match = _NOREPLY_RE.match(email.strip())
@@ -227,7 +232,12 @@ class StorySource:
             logger.warning("[story] could not read commit %s for co-authors: %s", sha[:7], error)
             message = ""
         for name, mail in _COAUTHOR_RE.findall(message):
-            people.append(_person_from_commit(name.strip(), mail))
+            person = _person_from_commit(name.strip(), mail)
+            # A committed review suggestion names its bot as a co-author; the
+            # words are still the contributor's, so the bot takes no credit.
+            if _is_bot(person):
+                continue
+            people.append(person)
         cache[sha] = people
         return people
 

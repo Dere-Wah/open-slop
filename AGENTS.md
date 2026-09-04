@@ -9,12 +9,16 @@ Read the guide that matches the task before you change anything:
 | Task | Read |
 | --- | --- |
 | Anything under `projector/` — feeding the model's queue, reels and snapshots, disconnects, what the viewer is told | [`skills/projector-architecture`](./skills/projector-architecture/SKILL.md) |
-| What a legal episode is — `story-tools/validate.py`, its tests, the pull-request allowlist | [`skills/story-format-validator`](./skills/story-format-validator/SKILL.md) |
+| What a legal episode is — `story-tools/validate.py`, its tests, the pull-request allowlist, and `story-tools/doctor.py`, the fixes CI suggests | [`skills/story-format-validator`](./skills/story-format-validator/SKILL.md) |
 | The story branch's workflows, the vote, auto-merge, rulesets | [`skills/story-ci-and-approval`](./skills/story-ci-and-approval/SKILL.md) |
 | Anything under `viewer/` — the page's GitHub-repository look, tokens, layout, curtain, rundown scaling | [`skills/viewer-design`](./skills/viewer-design/SKILL.md) |
 
 ## Rules that apply to every change here
 
+- **`story-tools/doctor.py` proposes; it never writes.** It turns a refused
+  file into `suggestion` review comments the author commits by hand, and
+  checks each against the validator first. Teach it a fix for every new rule,
+  or a note when only the author can fix it.
 - **`story-tools/validate.py` is the only definition of the format.** CI on the
   story branch, the projector, and contributors all run it. Change it there,
   add a test in `test_validate.py`, and update the story branch's
@@ -35,6 +39,7 @@ Read the guide that matches the task before you change anything:
   icons are inline. Check a change at 390px and 1440px through
   `/preview?state=…&episodes=120` before calling it done.
 - Before opening a pull request: `python3 story-tools/test_validate.py`,
+  `python3 story-tools/test_doctor.py`,
   `python3 -m py_compile projector/*.py story-tools/*.py`, and
   `cd viewer && pnpm build`. `.github/workflows/code-ci.yml` runs the same.
 - Use `pnpm` in `viewer/`. Do not commit `.env*`, `node_modules/`, build
