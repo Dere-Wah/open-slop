@@ -4,11 +4,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { ChevronRightIcon, CommentIcon, GitPullRequestIcon } from "./Icons";
 import { contributingUrl, pullRefOf, type RepoRef } from "@/lib/github";
+import { INFINITE, type ChatSource } from "@/lib/partners";
 
 export interface ChatEntry {
   id: number;
   author: string;
   text: string;
+  /** Where the line was typed; absent means here. */
+  source?: ChatSource;
 }
 
 const NAME_KEY = "open-slop-name";
@@ -30,6 +33,11 @@ const FOLLOW_SLACK = 48;
  * pull-request icon and `#41` — so "can someone review this?" reads at a
  * glance. Only this repository's pull requests get that; any other URL stays
  * plain text, so the chat cannot be turned into a link board.
+ *
+ * The same room is shared with The Infinite, whose theatre shows this
+ * screening; a line typed there carries their favicon after the name, and
+ * clicking it opens a small invitation to watch from the theatre. The badge
+ * follows the sender's identity (ShowApp decides), not anything typed.
  *
  * Nobody types a name to read. The first time someone sends, a small dialog
  * asks what to call them, the message goes out under that name, and the name
@@ -59,6 +67,7 @@ export function Chat({
   const [hidden, setHidden] = useState(false);
   // The message waiting for a name, when the dialog is open.
   const [pending, setPending] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const atBottomRef = useRef(true);
 
@@ -164,7 +173,10 @@ export function Chat({
                     <span className={`font-semibold ${isShow ? "text-accent" : "text-fg"}`}>
                       {isShow ? repo.repo : entry.author}
                     </span>
-                    {isShow && <span className="gh-label ml-1.5 h-4 px-1.5 text-[10px]">bot</span>}{" "}
+                    {isShow && <span className="gh-label ml-1.5 h-4 px-1.5 text-[10px]">bot</span>}
+                    {entry.source === INFINITE.source && (
+                      <PartnerBadge onClick={() => setInviteOpen(true)} />
+                    )}{" "}
                     <span className="text-fg">{renderText(entry.text, repo)}</span>
                   </p>
                 </li>
@@ -219,6 +231,7 @@ export function Chat({
           onChoose={chooseName}
         />
       )}
+      {inviteOpen && <TheatreDialog onClose={() => setInviteOpen(false)} />}
     </section>
   );
 }
@@ -370,6 +383,82 @@ function NameDialog({
           </button>
         </footer>
       </form>
+    </div>
+  );
+}
+
+/**
+ * The Infinite's favicon after a name: this line was typed in their theatre.
+ * A button, not a link, so the first click explains before it sends anyone
+ * away.
+ */
+function PartnerBadge({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`Sent from ${INFINITE.name}`}
+      aria-label={`Sent from ${INFINITE.name}; about watching there`}
+      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded align-[-3px] hover:bg-canvas-subtle"
+    >
+      <img src={INFINITE.favicon} width={12} height={12} alt="" loading="lazy" decoding="async" />
+    </button>
+  );
+}
+
+function TheatreDialog({ onClose }: { onClose: () => void }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="theatre-dialog-title"
+        className="gh-box w-full max-w-sm overflow-hidden shadow-2xl"
+      >
+        <header className="gh-box-header">
+          <img src={INFINITE.favicon} width={16} height={16} alt="" decoding="async" />
+          <h2 id="theatre-dialog-title" className="font-semibold">
+            Spectate this from a movie theatre!
+          </h2>
+        </header>
+        <div className="flex flex-col gap-2 p-4 text-sm text-fg-muted">
+          <p>
+            This message came from <span className="font-semibold text-fg">{INFINITE.name}</span>, a
+            virtual theatre that shows this same screening on the big screen, with the room chat
+            shared both ways.
+          </p>
+          <p>Walk in and watch with them; your seat is free.</p>
+        </div>
+        <footer className="flex justify-end gap-2 border-t border-line bg-canvas-subtle px-4 py-3">
+          <button type="button" onClick={onClose} className="gh-btn">
+            Stay here
+          </button>
+          <a
+            href={INFINITE.url}
+            target="_blank"
+            rel="noreferrer"
+            className="gh-btn gh-btn-primary hover:no-underline"
+            onClick={onClose}
+          >
+            Open {INFINITE.name}
+          </a>
+        </footer>
+      </div>
     </div>
   );
 }

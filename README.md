@@ -62,6 +62,7 @@ and how to contribute a scene, read the story branch's `README.md` and its
 | `projector/{pacer,publisher}.py` | The media path, unchanged from the Reactor example. |
 | `story-tools/validate.py` | The one validator, shared by CI and the projector. |
 | `story-tools/doctor.py` | The doctor: for a pull request the validator refused, works out the smallest edit that would pass and prints it as JSON; CI posts each as a one-click `suggestion` review comment. Never writes to the branch. |
+| `INTEGRATION.md` | The contract for a partner site showing the screening: the `/api/infinite/token` endpoint, the room's tracks and topics, and the shared chat protocol. |
 | `viewer/` | The Next.js viewer, laid out like a GitHub repository page: the player, the curtain (pre-show while nothing is on air), a now-playing bar, the rundown and credits (ending with when the next screening starts), an About panel, chat (a name is asked for on the first send; links to this repository's pull requests render as `#41` chips), and a viewer count over the picture from LiveKit's participant list. No UI package; the tokens are in `viewer/app/globals.css`. |
 | `skills/` | Guides for changing this branch: the projector, the format, the CI and vote, the viewer's design. |
 | `assets/how-to-approve.png` | The three-step screenshot strip the story bot embeds in its "Audience vote" comment. Served raw from this branch. |

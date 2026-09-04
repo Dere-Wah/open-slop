@@ -70,6 +70,7 @@ const CHATTER = [
   ["@ren", "https://github.com/Dere-Wah/open-slop/pull/41 is up, needs one more approve"],
   ["@ada", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
   ["@mira", "ok the keeper's face in scene 3 is going to haunt me"],
+  ["popcorn_pete", "watching from the back row, the fog looks huge in here", "infinite"],
 ] as const;
 
 function chatter(count: number): ChatEntry[] {
@@ -77,8 +78,13 @@ function chatter(count: number): ChatEntry[] {
     { id: 1, author: "show", text: "Screening nº 12 is on air: 3 episodes, 1m 25s. Story at d5b84a2." },
   ];
   for (let i = 0; entries.length < count; i++) {
-    const [author, text] = CHATTER[i % CHATTER.length];
-    entries.push({ id: entries.length + 1, author, text: i < CHATTER.length ? text : `${text} (${i})` });
+    const [author, text, source] = CHATTER[i % CHATTER.length];
+    entries.push({
+      id: entries.length + 1,
+      author,
+      text: i < CHATTER.length ? text : `${text} (${i})`,
+      source: source ?? "open-slop",
+    });
   }
   return entries;
 }

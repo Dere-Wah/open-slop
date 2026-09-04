@@ -5,6 +5,7 @@ import { ConnectionState, RemoteTrack, Room, RoomEvent } from "livekit-client";
 
 import { ShowPage } from "./ShowPage";
 import type { ChatEntry } from "./components/Chat";
+import { OWN_SOURCE, sourceOfIdentity, type ChatSource } from "@/lib/partners";
 import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/types";
 
 /**
@@ -21,8 +22,11 @@ import type { Rundown as RundownData, RundownScene, ShowState } from "@/lib/type
  * Trust is by participant identity. Every viewer holds a data-publish grant
  * (that is how chat works), so a `show.state` packet is honoured only when it
  * comes from the streamer, and a chat message may only sign as the show when
- * it does too. Room metadata is written through the server API, which no
- * viewer token can reach, so it needs no such check.
+ * it does too. Where a chat line was typed is read the same way: an identity
+ * minted by `/api/infinite/token` starts with the partner's prefix, and the
+ * packet's own `source` tag is ignored for that. Room metadata is written
+ * through the server API, which no viewer token can reach, so it needs no
+ * such check.
  *
  * The LiveKit client resumes transient drops on its own; when it gives up,
  * this component re-fetches a token and rejoins in a loop.
@@ -92,9 +96,9 @@ export function ShowApp() {
     return () => clearInterval(id);
   }, []);
 
-  const appendChat = useCallback((author: string, text: string) => {
+  const appendChat = useCallback((author: string, text: string, source: ChatSource) => {
     nextId.current += 1;
-    const entry: ChatEntry = { id: nextId.current, author, text };
+    const entry: ChatEntry = { id: nextId.current, author, text, source };
     setChat((prev) => [...prev.slice(-CHAT_LIMIT), entry]);
   }, []);
 
@@ -164,7 +168,7 @@ export function ShowApp() {
               // Only the streamer speaks as the show; a viewer who signs as
               // "show" is shown as a viewer with that name, not as the show.
               if (author === SHOW_AUTHOR && !fromStreamer) author = `"${SHOW_AUTHOR}"`;
-              if (author && text) appendChat(author, text);
+              if (author && text) appendChat(author, text, sourceOfIdentity(participant?.identity));
             } else if (topic === STATE_TOPIC) {
               if (!fromStreamer) return;
               const state = safeParse<ShowState>(payload);
@@ -210,11 +214,13 @@ export function ShowApp() {
     (author: string, text: string) => {
       const room = roomRef.current;
       if (!room || room.state !== ConnectionState.Connected) return false;
-      const packet = new TextEncoder().encode(JSON.stringify({ author, text }));
+      // `source` and `v` are the chat protocol's (INTEGRATION.md): a reader
+      // elsewhere tells our lines from theirs by the tag, and by our identity.
+      const packet = new TextEncoder().encode(JSON.stringify({ v: 1, source: OWN_SOURCE, author, text }));
       room.localParticipant
         .publishData(packet, { reliable: true, topic: CHAT_TOPIC })
         .catch((error) => console.error("chat send failed:", error));
-      appendChat(author, text);
+      appendChat(author, text, OWN_SOURCE);
       return true;
     },
     [appendChat],

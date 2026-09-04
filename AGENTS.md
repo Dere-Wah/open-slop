@@ -33,7 +33,11 @@ Read the guide that matches the task before you change anything:
   logic here, where a story contributor cannot edit it.
 - **The viewer trusts only the `streamer` participant** for `show.state` and
   for chat signed as the show, and renders only http(s) `href`s. Keep it that
-  way; every viewer holds a data-publish grant for chat.
+  way; every viewer holds a data-publish grant for chat. Where a chat line was
+  typed is read off the sender's identity prefix (`infinite-` is minted only
+  by `/api/infinite/token`), never off the packet's `source` tag.
+  `INTEGRATION.md` is the contract with the partner site; a change to a topic,
+  a track name, or the chat packet updates it in the same change.
 - **The viewer looks like a GitHub repository page and uses no UI package.**
   Colours, type, and radii are the tokens in `viewer/app/globals.css`; the
   icons are inline. Check a change at 390px and 1440px through
