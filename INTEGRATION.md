@@ -10,8 +10,8 @@ carries.
 ## 1. Getting in
 
 ```
-GET https://openslop.live/api/infinite/token
-GET https://openslop.live/api/infinite/token?chat=1&name=<display name>
+GET https://www.openslop.live/api/infinite/token
+GET https://www.openslop.live/api/infinite/token?chat=1&name=<display name>
 ```
 
 Call it from the browser. The endpoint answers only a request whose `Origin`
