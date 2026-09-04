@@ -1,4 +1,5 @@
-# Tung Tung Tung Sahur.
+# Tung Tung Tung Sahur
+
 ---
 seed: 20260903
 seconds: 8.0
