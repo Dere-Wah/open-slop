@@ -42,7 +42,7 @@ Per scene header, `key: value` lines only:
 | Key | Rule |
 | --- | --- |
 | `seed` | required; ASCII digits only (`^[0-9]+$`), so `1e3`, `0x10`, and Unicode digits are refused rather than guessed. |
-| `seconds` | required; one of `LEGAL_SECONDS`. The list is derived, not typed: `frames = 124 + 17·k` up to 345 at 24 fps, rounded to 3 decimals — the exact set `fast-h3` can build. An illegal value is reported with the nearest two legal ones. |
+| `seconds` | required; any plain decimal above zero (`8`, `10.125`; no exponent or sign). `snap_seconds` turns it into the length the model makes, by the model's own rule: round to frames, align up to the next `17n + 5`, clamp to 124–345 frames at 24 fps. `Scene.seconds` is the snapped value the projector sends and the rundown shows; `Scene.declared_seconds` is what the header says; the PR report names every scene where the two differ. `LEGAL_SECONDS` is the 14-value set that snapping can produce. |
 | `continue` | optional; exactly `true` or `false`. |
 
 Any other key is an error: a key nothing reads is a contributor believing they

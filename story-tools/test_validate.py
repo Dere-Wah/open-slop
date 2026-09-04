@@ -21,6 +21,8 @@ from validate import (
     Change,
     build_film,
     parse_episode,
+    report,
+    snap_seconds,
     validate_paths,
 )
 
@@ -177,12 +179,29 @@ def test_rejects_non_plain_seeds():
     assert issues == [] and film.episodes[0].scenes[0].seed == 7
 
 
-def test_rejects_illegal_seconds_and_suggests_neighbours():
-    text = _episode("seed: 1\nseconds: 10", _FRESH)  # 10.0 is not legal
-    _film_obj, issues = _film({"0010-a.md": text})
-    offending = [i for i in issues if "not a legal clip length" in i.message]
-    assert offending, _messages(issues)
-    assert "try" in offending[0].message
+def test_snaps_seconds_the_way_the_model_does():
+    # 10.0 s is 240 frames; the model aligns up to 243 (10.125 s).
+    text = _episode("seed: 1\nseconds: 10", _FRESH)
+    film, issues = _film({"0010-a.md": text})
+    assert issues == [], _messages(issues)
+    scene = film.episodes[0].scenes[0]
+    assert (scene.declared_seconds, scene.seconds) == (10.0, 10.125)
+    # Out of range clamps to the ends; a legal value is untouched.
+    assert snap_seconds(1) == LEGAL_SECONDS[0]
+    assert snap_seconds(60) == LEGAL_SECONDS[-1]
+    assert all(snap_seconds(legal) == legal for legal in LEGAL_SECONDS)
+    # The report tells the author what will play.
+    assert "asks for 10 s and will play as 10.125 s" in report(film, ["0010-a.md"])
+
+
+def test_rejects_non_positive_or_non_numeric_seconds():
+    for bad in ("0", "-3", "ten", "1e1"):
+        text = _episode(f"seed: 1\nseconds: {bad}", _FRESH)
+        _film_obj, issues = _film({"0010-a.md": text})
+        assert any("seconds must be a number above zero" in i.message for i in issues), (
+            bad,
+            _messages(issues),
+        )
 
 
 def test_rejects_non_boolean_continue():

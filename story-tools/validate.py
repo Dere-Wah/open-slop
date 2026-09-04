@@ -37,9 +37,10 @@ from pathlib import Path
 
 # fast-h3's fixed output rate and its legal clip lengths. A clip is a frame
 # count of the form 17n + 5 between 124 and 345 frames, so exactly 14 lengths
-# are legal, 5.167 s to 14.375 s, stepping ~0.708 s. Authors name one of these
-# exactly, so the render is deterministic — the model would otherwise snap a
-# free value and the seed would land on a length nobody chose.
+# are legal, 5.167 s to 14.375 s, stepping ~0.708 s. An author may write any
+# positive number; `snap_seconds` turns it into the length the model will
+# actually make, by the model's own rule, so the rundown and the countdown
+# describe the clip that plays rather than the one that was asked for.
 FPS = 24
 _MIN_FRAMES = 124
 _MAX_FRAMES = 345
@@ -131,7 +132,8 @@ class Scene:
 
     index: int  # 0-based position within its episode
     seed: int
-    seconds: float
+    seconds: float  # what plays: `declared_seconds` snapped by the model's rule
+    declared_seconds: float  # what the header says
     declared_continue: bool | None
     body: str  # the prose as written, line breaks kept
     prompt: str  # what the model receives: `body` with whitespace collapsed
@@ -201,11 +203,12 @@ def _as_int(value: str) -> int | None:
     return int(value) if _INT_RE.match(value) else None
 
 
+_DECIMAL_RE = re.compile(r"^[0-9]+(\.[0-9]+)?$")
+
+
 def _as_float(value: str) -> float | None:
-    try:
-        return float(value)
-    except ValueError:
-        return None
+    """A plain decimal such as `8` or `10.125`; no exponent, sign, or `inf`."""
+    return float(value) if _DECIMAL_RE.match(value.strip()) else None
 
 
 def _as_bool(value: str) -> bool | None:
@@ -217,19 +220,18 @@ def _as_bool(value: str) -> bool | None:
     return None
 
 
-def _match_legal_seconds(value: float) -> float | None:
-    """The canonical legal length `value` names, or None if it names none."""
-    for legal in LEGAL_SECONDS:
-        if abs(value - legal) < 0.005:
-            return legal
-    return None
+def snap_seconds(value: float) -> float:
+    """The clip length fast-h3 makes when asked for `value` seconds.
 
-
-def _nearest_legal(value: float) -> tuple[float, float]:
-    """The two legal lengths closest to `value`, low then high where possible."""
-    ordered = sorted(LEGAL_SECONDS, key=lambda legal: abs(legal - value))
-    pair = sorted(ordered[:2])
-    return pair[0], pair[1]
+    Mirrors the model's `frames_for_seconds`: round to whole frames, align up
+    to the next `17n + 5`, clamp into the generatable range. A value that is
+    already legal is returned unchanged (to three decimals).
+    """
+    frames = max(1, round(value * FPS))
+    while frames % _FRAME_STEP != _MIN_FRAMES % _FRAME_STEP:
+        frames += 1
+    frames = max(_MIN_FRAMES, min(_MAX_FRAMES, frames))
+    return round(frames / FPS, 3)
 
 
 def _parse_frontmatter(
@@ -280,21 +282,13 @@ def _parse_frontmatter(
                 data["seed"] = parsed
         elif key == "seconds":
             parsed = _as_float(value)
-            if parsed is None:
-                issues.append(Issue(path, lineno, f"seconds must be a number, got {value!r}"))
+            if parsed is None or parsed <= 0:
+                issues.append(
+                    Issue(path, lineno, f"seconds must be a number above zero, got {value!r}")
+                )
             else:
-                legal = _match_legal_seconds(parsed)
-                if legal is None:
-                    low, high = _nearest_legal(parsed)
-                    issues.append(
-                        Issue(
-                            path,
-                            lineno,
-                            f"{value} is not a legal clip length — try {low} or {high}",
-                        )
-                    )
-                else:
-                    data["seconds"] = legal
+                data["declared_seconds"] = parsed
+                data["seconds"] = snap_seconds(parsed)
         else:  # continue
             parsed = _as_bool(value)
             if parsed is None:
@@ -462,6 +456,7 @@ def parse_episode(name: str, text: str) -> tuple[Episode | None, list[Issue]]:
                 index=len(scenes),
                 seed=data.get("seed", 0),
                 seconds=data.get("seconds", 0.0),
+                declared_seconds=data.get("declared_seconds", 0.0),
                 declared_continue=data.get("continue"),
                 body=body,
                 prompt=collapsed,
@@ -692,6 +687,13 @@ def report(film: Film, changed_episodes: list[str]) -> str:
             f"{format_duration(episode.seconds)}; prompt lengths {lengths} of "
             f"{MAX_PROMPT_CHARS} characters."
         )
+        for scene in episode.scenes:
+            if abs(scene.declared_seconds - scene.seconds) >= 0.0005:
+                lines.append(
+                    f"Scene {scene.index + 1} asks for {scene.declared_seconds:g} s and will "
+                    f"play as {scene.seconds:g} s: the model makes clips in fixed steps and "
+                    f"rounds up to the next one."
+                )
     lines.append(
         f"The film is now {format_duration(film.total_seconds)} across {count} "
         f"episode{'s' if count != 1 else ''}; each screening restarts when it ends."
