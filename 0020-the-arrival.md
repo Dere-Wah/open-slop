@@ -26,7 +26,8 @@ high collar of a heavy blue coat. Flat 2D cel animation, thick black outlines,
 flat fills. Briny blues and fog greys, one side of his face washed warm
 lamp-yellow each time the great lens turns past behind him. He watches the grey
 sea below without blinking, then speaks slowly in a low, tired, gravelly voice:
-"They only come when the light is wrong." The camera holds on his face. Sound:
+"Nineteen years that green light has blinked out there, and nobody has ever
+gone to it." The camera holds on his face. Sound:
 wind hums against the glass, the lamp mechanism ticks in a steady rhythm, the
 surf is faint and far below.
 
